@@ -1,0 +1,76 @@
+{
+  "app": {
+    "version": 1
+  },
+  "visual": {
+    "card_back": "default",
+    "card_faces": "default",
+    "portrait_set": "default",
+    "portrait_files": {
+      "left": "bot_left.png",
+      "top": "bot_top.png",
+      "right": "bot_right.png",
+      "bottom": "player_you.png"
+    },
+    "custom_back_file": null
+  },
+  "defaults": {
+    "loss_limit": 2,
+    "opening_mode": "classic",
+    "animation_speed": "normal"
+  },
+  "layout": {
+    "game_table": {
+      "table_area": {
+        "delta_x": 0,
+        "delta_y": 0
+      },
+      "player_left_panel": {
+        "delta_x": 0,
+        "delta_y": 0
+      },
+      "player_top_panel": {
+        "delta_x": 30,
+        "delta_y": -15
+      },
+      "player_right_panel": {
+        "delta_x": 0,
+        "delta_y": 0
+      },
+      "player_bottom_panel": {
+        "delta_x": 0,
+        "delta_y": 5
+      },
+      "deck_panel": {
+        "delta_x": 0,
+        "delta_y": 0
+      },
+      "actions_panel": {
+        "delta_x": -400,
+        "delta_y": -5
+      }
+    },
+    "main_menu": {
+      "menu_root": {
+        "delta_x": 0,
+        "delta_y": 0
+      },
+      "deck_panel": {
+        "delta_x": 0,
+        "delta_y": 0
+      },
+      "game_settings_panel": {
+        "delta_x": 0,
+        "delta_y": 0
+      },
+      "start_button": {
+        "delta_x": 0,
+        "delta_y": 0
+      },
+      "exit_button": {
+        "delta_x": 0,
+        "delta_y": 0
+      }
+    }
+  }
+}
