@@ -15,7 +15,7 @@
     "custom_back_file": null
   },
   "defaults": {
-    "loss_limit": 2,
+    "loss_limit": 1,
     "opening_mode": "classic",
     "animation_speed": "normal"
   },

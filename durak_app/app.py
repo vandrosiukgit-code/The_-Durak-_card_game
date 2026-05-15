@@ -1,6 +1,7 @@
 import os
 
 import pygame
+import pygame_gui
 
 from card_engine import DurakGameState
 from card_engine.cards import Card
@@ -27,9 +28,10 @@ from .config import (
     WIDTH,
 )
 from .game_table import GameTableScreen
+from .gui_layer import GameUIController
 from .menu import MainMenuScreen
 from .modals import ModalRenderer
-from .ui import Button, CardAnimation
+from .ui import CardAnimation
 
 
 class DurakApp:
@@ -57,26 +59,6 @@ class DurakApp:
         self.small_font = pygame.font.SysFont("arial", 22)
         self.tiny_font = pygame.font.SysFont("arial", 18)
 
-        self.pass_button = Button(pygame.Rect(0, 0, 96, 34), "Pass", self.small_font)
-        self.take_button = Button(pygame.Rect(0, 0, 96, 34), "Take", self.small_font)
-        self.restart_button = Button(pygame.Rect(0, 0, 110, 34), "Restart", self.small_font)
-        self.surrender_button = Button(pygame.Rect(0, 0, 110, 34), "Surrender", self.small_font)
-        self.intro_ok_button = Button(pygame.Rect(0, 0, 120, 42), "OK", self.small_font)
-        self.endgame_continue_button = Button(pygame.Rect(0, 0, 180, 42), "Continue", self.small_font)
-        self.endgame_end_button = Button(pygame.Rect(0, 0, 180, 42), "End game", self.small_font)
-        self.menu_start_button = Button(pygame.Rect(0, 0, 190, 44), "Start party", self.small_font)
-        self.menu_exit_button = Button(pygame.Rect(0, 0, 190, 44), "Exit", self.small_font)
-        self.games_minus_button = Button(pygame.Rect(0, 0, 44, 44), "-", self.small_font)
-        self.games_plus_button = Button(pygame.Rect(0, 0, 44, 44), "+", self.small_font)
-        self.mode_prev_button = Button(pygame.Rect(0, 0, 44, 44), "<", self.small_font)
-        self.mode_next_button = Button(pygame.Rect(0, 0, 44, 44), ">", self.small_font)
-        self.speed_prev_button = Button(pygame.Rect(0, 0, 44, 44), "<", self.small_font)
-        self.speed_next_button = Button(pygame.Rect(0, 0, 44, 44), ">", self.small_font)
-        self.back_prev_button = Button(pygame.Rect(0, 0, 44, 44), "<", self.small_font)
-        self.back_next_button = Button(pygame.Rect(0, 0, 44, 44), ">", self.small_font)
-        self.faces_prev_button = Button(pygame.Rect(0, 0, 44, 44), "<", self.small_font)
-        self.faces_next_button = Button(pygame.Rect(0, 0, 44, 44), ">", self.small_font)
-
         self.animations: list[CardAnimation] = []
         self.selected_card_index: int | None = None
         self.player_card_rects: list[pygame.Rect] = []
@@ -101,10 +83,13 @@ class DurakApp:
         self.durak_counts = {seat: 0 for seat in PLAYER_NAMES}
         self.match_complete = False
         self.game_result_recorded = False
+        self.request_quit = False
 
         self.table_screen = GameTableScreen(self)
         self.menu_screen = MainMenuScreen(self)
-        self.modal_renderer = ModalRenderer(self)
+        self.ui_controller = GameUIController(self)
+        self.modal_renderer = ModalRenderer(self, self.ui_controller.manager)
+        self.ui_controller.attach_modals(self.modal_renderer)
         self.app_config.sync_layout_schema(
             {
                 "game_table": self.table_screen.layout_schema(),
@@ -549,41 +534,27 @@ class DurakApp:
     def run(self) -> None:
         running = True
         while running:
-            self.clock.tick(FPS)
+            time_delta = self.clock.tick(FPS) / 1000.0
             mouse_pos = pygame.mouse.get_pos()
             for event in pygame.event.get():
+                self.ui_controller.manager.process_events(event)
                 if event.type == pygame.QUIT:
                     running = False
+                elif event.type == pygame_gui.UI_BUTTON_PRESSED:
+                    if self.ui_controller.process_event(event):
+                        continue
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_r and not self.menu_visible:
                     self.reset_game()
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if self.menu_visible:
                         running = self.menu_screen.handle_click(event.pos)
-                    elif self.endgame_visible:
-                        if self.endgame_continue_button.is_clicked(event):
-                            self.continue_match()
-                        elif self.endgame_end_button.is_clicked(event):
-                            running = False
-                    elif self.intro_visible:
-                        if self.intro_ok_button.is_clicked(event):
-                            self.intro_visible = False
-                    elif self.restart_button.is_clicked(event):
-                        self.reset_game()
-                    elif self.surrender_button.is_clicked(event):
-                        self.player_surrender()
-                    elif self.pass_button.is_clicked(event) and self.state.available_actions_for_player()["pass"]:
-                        self.state.pass_action("bottom")
-                        self.selected_card_index = None
-                        self.check_for_new_cards()
-                        self.advance_bots()
-                    elif self.take_button.is_clicked(event) and self.state.available_actions_for_player()["take"]:
-                        self.state.player_take()
-                        self.selected_card_index = None
-                        self.check_for_new_cards()
-                        self.advance_bots()
-                    else:
+                    elif not self.ui_controller.point_over_ui(event.pos):
                         self.handle_player_card_click(event.pos)
 
+            if self.request_quit:
+                running = False
+
+            self.ui_controller.update(time_delta)
             if self.state is not None:
                 self.table_screen.draw(mouse_pos)
                 for animation in self.animations[:]:
@@ -595,10 +566,6 @@ class DurakApp:
                         self.animations.remove(animation)
                 if self.bot_autoplay_pending and not self.animations and not self.intro_visible and not self.endgame_visible and not self.menu_visible and not self.is_timer_active("bot_step_pause"):
                     self.process_pending_bot_step()
-                if self.intro_visible:
-                    self.modal_renderer.draw_intro(mouse_pos)
-                elif self.endgame_visible:
-                    self.modal_renderer.draw_endgame(mouse_pos)
             else:
                 self.screen.fill(TABLE_COLOR)
                 pygame.draw.rect(self.screen, PANEL_COLOR, TABLE_RECT, border_radius=40)
@@ -607,5 +574,6 @@ class DurakApp:
 
             if self.menu_visible:
                 self.menu_screen.draw(mouse_pos)
+            self.ui_controller.draw(self.screen)
             pygame.display.flip()
         pygame.quit()

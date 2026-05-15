@@ -259,26 +259,7 @@ class GameTableScreen:
             self.app.screen.blit(label, (deck_x + (CARD_WIDTH // 2) - (label.get_width() // 2), deck_y + 20))
 
     def draw_controls(self, mouse_pos: tuple[int, int]) -> None:
-        state = self.app.state
-        assert state is not None
-        actions = state.available_actions_for_player()
-        panel_rect = self.get_block_rects()["actions_panel"]
-        pygame.draw.rect(self.app.screen, PANEL_COLOR, panel_rect, border_radius=18)
-        pygame.draw.rect(self.app.screen, SLOT_COLOR, panel_rect, width=2, border_radius=18)
-        title = self.app.small_font.render("Actions", True, TEXT_COLOR)
-        self.app.screen.blit(title, (panel_rect.x + 26, panel_rect.y + 18))
-
-        controls_x = panel_rect.x + 30
-        controls_y = panel_rect.y + 86
-        buttons_data = [
-            (self.app.pass_button, actions["pass"], controls_x, controls_y),
-            (self.app.take_button, actions["take"], controls_x, controls_y + 56),
-            (self.app.restart_button, True, controls_x, controls_y + 112),
-            (self.app.surrender_button, not state.is_game_over(), controls_x, controls_y + 168),
-        ]
-        for button, enabled, x, y in buttons_data:
-            button.rect.topleft = (x, y)
-            button.draw(self.app.screen, mouse_pos, enabled=enabled)
+        return
 
     def draw_portrait(self, rect: pygame.Rect, seat: str) -> None:
         portrait = pygame.transform.smoothscale(self.app.portraits[seat], rect.size)

@@ -1,0 +1,190 @@
+{
+  "defaults": {
+    "font": {
+      "name": "arial",
+      "size": "18"
+    },
+    "colours": {
+      "normal_bg": "#173d2b",
+      "dark_bg": "#103423",
+      "normal_text": "#f3f1ea",
+      "normal_border": "#d4c8a1",
+      "selected_bg": "#2a5f43",
+      "selected_border": "#f0c85a",
+      "disabled_bg": "#6f6f6f",
+      "disabled_text": "#d0d0d0"
+    }
+  },
+  "#actions_panel": {
+    "colours": {
+      "dark_bg": "#123927",
+      "normal_border": "#cdd6cd"
+    },
+    "misc": {
+      "border_width": "2",
+      "shape": "rounded_rectangle",
+      "shape_corner_radius": "18"
+    }
+  },
+  "#modal_panel": {
+    "colours": {
+      "dark_bg": "#123927",
+      "normal_border": "#cdd6cd"
+    },
+    "misc": {
+      "border_width": "2",
+      "shape": "rounded_rectangle",
+      "shape_corner_radius": "22"
+    }
+  },
+  "#modal_overlay": {
+    "colours": {
+      "dark_bg": "#05120c",
+      "normal_border": "#05120c"
+    },
+    "misc": {
+      "border_width": "0",
+      "shape": "rectangle"
+    }
+  },
+  "#panel_title": {
+    "font": {
+      "name": "arial",
+      "size": "22"
+    },
+    "colours": {
+      "normal_text": "#f5f5f5"
+    }
+  },
+  "#action_button": {
+    "font": {
+      "name": "arial",
+      "size": "20"
+    },
+    "colours": {
+      "normal_bg": "#e7c257",
+      "hovered_bg": "#f4d272",
+      "active_bg": "#d3aa3f",
+      "disabled_bg": "#787878",
+      "normal_text": "#231e18",
+      "hovered_text": "#231e18",
+      "active_text": "#231e18",
+      "disabled_text": "#3f3f3f",
+      "normal_border": "#231e18",
+      "hovered_border": "#231e18",
+      "active_border": "#231e18",
+      "disabled_border": "#494949"
+    },
+    "misc": {
+      "border_width": "2",
+      "shape": "rounded_rectangle",
+      "shape_corner_radius": "12"
+    }
+  },
+  "#primary_button": {
+    "font": {
+      "name": "arial",
+      "size": "20"
+    },
+    "colours": {
+      "normal_bg": "#e7c257",
+      "hovered_bg": "#f4d272",
+      "active_bg": "#d3aa3f",
+      "disabled_bg": "#787878",
+      "normal_text": "#231e18",
+      "hovered_text": "#231e18",
+      "active_text": "#231e18",
+      "disabled_text": "#3f3f3f",
+      "normal_border": "#231e18",
+      "hovered_border": "#231e18",
+      "active_border": "#231e18",
+      "disabled_border": "#494949"
+    },
+    "misc": {
+      "border_width": "2",
+      "shape": "rounded_rectangle",
+      "shape_corner_radius": "12"
+    }
+  },
+  "#danger_button": {
+    "font": {
+      "name": "arial",
+      "size": "20"
+    },
+    "colours": {
+      "normal_bg": "#924242",
+      "hovered_bg": "#b15252",
+      "active_bg": "#7a3636",
+      "disabled_bg": "#787878",
+      "normal_text": "#f3f1ea",
+      "hovered_text": "#ffffff",
+      "active_text": "#ffffff",
+      "disabled_text": "#3f3f3f",
+      "normal_border": "#231e18",
+      "hovered_border": "#231e18",
+      "active_border": "#231e18",
+      "disabled_border": "#494949"
+    },
+    "misc": {
+      "border_width": "2",
+      "shape": "rounded_rectangle",
+      "shape_corner_radius": "12"
+    }
+  },
+  "#modal_title": {
+    "font": {
+      "name": "arial",
+      "size": "30"
+    },
+    "colours": {
+      "normal_text": "#f5f5f5"
+    }
+  },
+  "#modal_section": {
+    "font": {
+      "name": "arial",
+      "size": "22"
+    },
+    "colours": {
+      "normal_text": "#f5f5f5"
+    }
+  },
+  "#modal_text": {
+    "font": {
+      "name": "arial",
+      "size": "18"
+    },
+    "colours": {
+      "normal_text": "#d7e0d7"
+    }
+  },
+  "#modal_value": {
+    "font": {
+      "name": "arial",
+      "size": "24"
+    },
+    "colours": {
+      "normal_text": "#e7c257"
+    }
+  },
+  "#modal_hint": {
+    "font": {
+      "name": "arial",
+      "size": "16"
+    },
+    "colours": {
+      "normal_text": "#d7e0d7"
+    }
+  },
+  "#score_panel": {
+    "colours": {
+      "dark_bg": "#26523e",
+      "normal_border": "#cdd6cd"
+    },
+    "misc": {
+      "border_width": "2",
+      "shape": "rounded_rectangle",
+      "shape_corner_radius": "16"
+    }
+  }
+}
