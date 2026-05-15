@@ -1,6 +1,6 @@
 import pygame
 
-from .config import ACTION_DISABLED, BUTTON_COLOR, BUTTON_HOVER, BUTTON_TEXT
+from .config import BUTTON_TEXT
 
 
 class CardAnimation:
@@ -65,27 +65,3 @@ class CardAnimation:
         rect = self.current_display_img.get_rect(center=self.current_pos)
         surface.blit(self.current_display_img, rect)
         pygame.draw.rect(surface, BUTTON_TEXT, rect, width=2, border_radius=10)
-
-
-class Button:
-    def __init__(self, rect: pygame.Rect, text: str, font: pygame.font.Font) -> None:
-        self.rect = rect
-        self.text = text
-        self.font = font
-
-    def draw(self, surface: pygame.Surface, mouse_pos: tuple[int, int], enabled: bool = True) -> None:
-        if not enabled:
-            color = ACTION_DISABLED
-        else:
-            color = BUTTON_HOVER if self.rect.collidepoint(mouse_pos) else BUTTON_COLOR
-        pygame.draw.rect(surface, color, self.rect, border_radius=12)
-        pygame.draw.rect(surface, BUTTON_TEXT, self.rect, width=2, border_radius=12)
-        label = self.font.render(self.text, True, BUTTON_TEXT)
-        surface.blit(label, label.get_rect(center=self.rect.center))
-
-    def is_clicked(self, event: pygame.event.Event) -> bool:
-        return (
-            event.type == pygame.MOUSEBUTTONDOWN
-            and event.button == 1
-            and self.rect.collidepoint(event.pos)
-        )

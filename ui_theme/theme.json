@@ -56,6 +56,79 @@
       "normal_text": "#f5f5f5"
     }
   },
+  "#game_title_label": {
+    "font": {
+      "name": "arial",
+      "size": "40",
+      "bold": "1"
+    },
+    "colours": {
+      "normal_text": "#f3f1ea"
+    }
+  },
+  "#game_subtitle_label": {
+    "font": {
+      "name": "arial",
+      "size": "22"
+    },
+    "colours": {
+      "normal_text": "#d7e0d7"
+    }
+  },
+  "#game_info_label": {
+    "font": {
+      "name": "arial",
+      "size": "24"
+    },
+    "colours": {
+      "normal_text": "#f3f1ea"
+    }
+  },
+  "#game_meta_label": {
+    "font": {
+      "name": "arial",
+      "size": "20"
+    },
+    "colours": {
+      "normal_text": "#d7e0d7"
+    }
+  },
+  "#game_meta_small_label": {
+    "font": {
+      "name": "arial",
+      "size": "18"
+    },
+    "colours": {
+      "normal_text": "#d7e0d7"
+    }
+  },
+  "#player_name_label": {
+    "font": {
+      "name": "arial",
+      "size": "22"
+    },
+    "colours": {
+      "normal_text": "#f3f1ea"
+    }
+  },
+  "#player_role_label": {
+    "font": {
+      "name": "arial",
+      "size": "18"
+    },
+    "colours": {
+      "normal_text": "#d7e0d7"
+    }
+  },
+  "#player_loss_label": {
+    "font": {
+      "name": "arial",
+      "size": "18"
+    },
+    "colours": {
+      "normal_text": "#f3f1ea"
+    }
+  },
   "#action_button": {
     "font": {
       "name": "arial",

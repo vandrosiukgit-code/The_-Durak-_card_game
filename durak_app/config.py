@@ -158,10 +158,23 @@ class AppConfig:
                 block_schema = {
                     "delta_x": 0,
                     "delta_y": 0,
+                    "width_delta": 0,
+                    "height_delta": 0,
+                    "todo_text": "",
+                    "module": "",
+                    "type": "block",
+                    "label": block_id,
                 }
                 block_schema.update(defaults)
                 stored_block = stored_screen.get(block_id, {})
-                synced_screen[block_id] = _deep_merge_dicts(block_schema, stored_block)
+                synced_screen[block_id] = {
+                    **block_schema,
+                    "delta_x": int(stored_block.get("delta_x", block_schema["delta_x"])),
+                    "delta_y": int(stored_block.get("delta_y", block_schema["delta_y"])),
+                    "width_delta": int(stored_block.get("width_delta", block_schema["width_delta"])),
+                    "height_delta": int(stored_block.get("height_delta", block_schema["height_delta"])),
+                    "todo_text": str(stored_block.get("todo_text", block_schema["todo_text"])),
+                }
             synced_layout[screen_id] = synced_screen
 
         self.data["layout"] = synced_layout
@@ -170,3 +183,22 @@ class AppConfig:
     def get_layout_delta(self, screen_id: str, block_id: str) -> tuple[int, int]:
         block = self.data.get("layout", {}).get(screen_id, {}).get(block_id, {})
         return int(block.get("delta_x", 0)), int(block.get("delta_y", 0))
+
+    def get_layout_size_delta(self, screen_id: str, block_id: str) -> tuple[int, int]:
+        block = self.data.get("layout", {}).get(screen_id, {}).get(block_id, {})
+        return int(block.get("width_delta", 0)), int(block.get("height_delta", 0))
+
+    def get_layout_entry(self, screen_id: str, block_id: str) -> dict[str, Any]:
+        return self.data.setdefault("layout", {}).setdefault(screen_id, {}).setdefault(
+            block_id,
+            {
+                "delta_x": 0,
+                "delta_y": 0,
+                "width_delta": 0,
+                "height_delta": 0,
+                "todo_text": "",
+                "module": "",
+                "type": "block",
+                "label": block_id,
+            },
+        )

@@ -16,6 +16,39 @@ class ModalRenderer:
         self._build_endgame_modal()
         self.hide_all()
 
+    @staticmethod
+    def intro_layout_schema() -> dict[str, dict[str, int | str]]:
+        return {
+            "overlay": {"module": "durak_app.modals", "type": "overlay", "label": "Overlay стартового окна"},
+            "panel": {"module": "durak_app.modals", "type": "modal_panel", "label": "Стартовое модальное окно"},
+            "title": {"module": "durak_app.modals", "type": "label", "label": "Заголовок стартового окна"},
+            "trump_label": {"module": "durak_app.modals", "type": "label", "label": "Строка козыря"},
+            "tips_section": {"module": "durak_app.modals", "type": "label", "label": "Секция подсказок"},
+            "continue_button": {"module": "durak_app.modals", "type": "button", "label": "Кнопка Continue стартового окна"},
+        }
+
+    @staticmethod
+    def endgame_layout_schema() -> dict[str, dict[str, int | str]]:
+        return {
+            "overlay": {"module": "durak_app.modals", "type": "overlay", "label": "Overlay финального окна"},
+            "panel": {"module": "durak_app.modals", "type": "modal_panel", "label": "Финальное модальное окно"},
+            "title": {"module": "durak_app.modals", "type": "label", "label": "Заголовок финального окна"},
+            "loser_name": {"module": "durak_app.modals", "type": "label", "label": "Проигравший партии"},
+            "score_panel": {"module": "durak_app.modals", "type": "panel", "label": "Панель статистики поражений"},
+            "continue_button": {"module": "durak_app.modals", "type": "button", "label": "Кнопка Continue финального окна"},
+            "end_button": {"module": "durak_app.modals", "type": "button", "label": "Кнопка End game"},
+        }
+
+    def layout_rect(self, screen_id: str, block_id: str, rect: pygame.Rect) -> pygame.Rect:
+        delta_x, delta_y = self.app.app_config.get_layout_delta(screen_id, block_id)
+        width_delta, height_delta = self.app.app_config.get_layout_size_delta(screen_id, block_id)
+        moved = rect.copy()
+        moved.x += delta_x
+        moved.y += delta_y
+        moved.width = max(12, moved.width + width_delta)
+        moved.height = max(12, moved.height + height_delta)
+        return moved
+
     def _build_intro_modal(self) -> None:
         self.intro_overlay = UIPanel(
             relative_rect=pygame.Rect(0, 0, WIDTH, HEIGHT),
@@ -200,22 +233,59 @@ class ModalRenderer:
         self.endgame_overlay.hide()
 
     def sync_layout(self) -> None:
-        self.intro_overlay.set_relative_position((0, 0))
-        self.intro_overlay.set_dimensions((WIDTH, HEIGHT))
-        self.intro_modal_rect = pygame.Rect(WIDTH // 2 - 290, HEIGHT // 2 - 190, 580, 380)
+        intro_overlay_rect = self.layout_rect("modal_intro", "overlay", pygame.Rect(0, 0, WIDTH, HEIGHT))
+        self.intro_overlay.set_relative_position((intro_overlay_rect.x, intro_overlay_rect.y))
+        self.intro_overlay.set_dimensions((intro_overlay_rect.width, intro_overlay_rect.height))
+        self.intro_modal_rect = self.layout_rect("modal_intro", "panel", pygame.Rect(WIDTH // 2 - 290, HEIGHT // 2 - 190, 580, 380))
         self.intro_panel.set_relative_position((self.intro_modal_rect.x, self.intro_modal_rect.y))
         self.intro_panel.set_dimensions((self.intro_modal_rect.width, self.intro_modal_rect.height))
-        self.intro_ok_button.set_relative_position(((self.intro_modal_rect.width - 140) // 2, self.intro_modal_rect.height - 70))
+        intro_title_rect = self.layout_rect("modal_intro", "title", pygame.Rect(34, 24, 500, 40))
+        self.intro_title.set_relative_position((intro_title_rect.x, intro_title_rect.y))
+        self.intro_title.set_dimensions((intro_title_rect.width, intro_title_rect.height))
+        trump_rect = self.layout_rect("modal_intro", "trump_label", pygame.Rect(36, 82, 500, 24))
+        self.intro_trump.set_relative_position((trump_rect.x, trump_rect.y))
+        self.intro_trump.set_dimensions((trump_rect.width, trump_rect.height))
+        tips_rect = self.layout_rect("modal_intro", "tips_section", pygame.Rect(36, 184, 200, 28))
+        self.intro_tips_title.set_relative_position((tips_rect.x, tips_rect.y))
+        self.intro_tips_title.set_dimensions((tips_rect.width, tips_rect.height))
+        continue_rect = self.layout_rect(
+            "modal_intro",
+            "continue_button",
+            pygame.Rect((self.intro_modal_rect.width - 140) // 2, self.intro_modal_rect.height - 70, 140, 42),
+        )
+        self.intro_ok_button.set_relative_position((continue_rect.x, continue_rect.y))
+        self.intro_ok_button.set_dimensions((continue_rect.width, continue_rect.height))
 
-        self.endgame_overlay.set_relative_position((0, 0))
-        self.endgame_overlay.set_dimensions((WIDTH, HEIGHT))
-        self.endgame_modal_rect = pygame.Rect(WIDTH // 2 - 330, HEIGHT // 2 - 250, 660, 500)
+        end_overlay_rect = self.layout_rect("modal_endgame", "overlay", pygame.Rect(0, 0, WIDTH, HEIGHT))
+        self.endgame_overlay.set_relative_position((end_overlay_rect.x, end_overlay_rect.y))
+        self.endgame_overlay.set_dimensions((end_overlay_rect.width, end_overlay_rect.height))
+        self.endgame_modal_rect = self.layout_rect("modal_endgame", "panel", pygame.Rect(WIDTH // 2 - 330, HEIGHT // 2 - 250, 660, 500))
         self.endgame_panel.set_relative_position((self.endgame_modal_rect.x, self.endgame_modal_rect.y))
         self.endgame_panel.set_dimensions((self.endgame_modal_rect.width, self.endgame_modal_rect.height))
-        self.endgame_score_panel.set_dimensions((self.endgame_modal_rect.width - 72, 134))
+        title_rect = self.layout_rect("modal_endgame", "title", pygame.Rect(34, 24, 560, 42))
+        self.endgame_title.set_relative_position((title_rect.x, title_rect.y))
+        self.endgame_title.set_dimensions((title_rect.width, title_rect.height))
+        loser_rect = self.layout_rect("modal_endgame", "loser_name", pygame.Rect(36, 132, 320, 30))
+        self.endgame_loser_name.set_relative_position((loser_rect.x, loser_rect.y))
+        self.endgame_loser_name.set_dimensions((loser_rect.width, loser_rect.height))
+        score_rect = self.layout_rect("modal_endgame", "score_panel", pygame.Rect(36, 258, self.endgame_modal_rect.width - 72, 134))
+        self.endgame_score_panel.set_relative_position((score_rect.x, score_rect.y))
+        self.endgame_score_panel.set_dimensions((score_rect.width, score_rect.height))
         self.endgame_hint.set_relative_position((36, self.endgame_modal_rect.height - 102))
-        self.endgame_continue_button.set_relative_position((self.endgame_modal_rect.width // 2 - 220, self.endgame_modal_rect.height - 72))
-        self.endgame_end_button.set_relative_position((self.endgame_modal_rect.width // 2 + 40, self.endgame_modal_rect.height - 72))
+        continue_rect = self.layout_rect(
+            "modal_endgame",
+            "continue_button",
+            pygame.Rect(self.endgame_modal_rect.width // 2 - 220, self.endgame_modal_rect.height - 72, 180, 42),
+        )
+        end_rect = self.layout_rect(
+            "modal_endgame",
+            "end_button",
+            pygame.Rect(self.endgame_modal_rect.width // 2 + 40, self.endgame_modal_rect.height - 72, 180, 42),
+        )
+        self.endgame_continue_button.set_relative_position((continue_rect.x, continue_rect.y))
+        self.endgame_continue_button.set_dimensions((continue_rect.width, continue_rect.height))
+        self.endgame_end_button.set_relative_position((end_rect.x, end_rect.y))
+        self.endgame_end_button.set_dimensions((end_rect.width, end_rect.height))
 
     def sync_visibility(self) -> None:
         if self.app.intro_visible and self.app.state is not None:
@@ -292,3 +362,25 @@ class ModalRenderer:
         if self.endgame_overlay.visible:
             return self.endgame_modal_rect.collidepoint(pos)
         return False
+
+    def get_block_rects(self, screen_id: str) -> dict[str, pygame.Rect]:
+        if screen_id == "modal_intro":
+            return {
+                "overlay": self.intro_overlay.get_abs_rect(),
+                "panel": self.intro_panel.get_abs_rect(),
+                "title": self.intro_title.get_abs_rect(),
+                "trump_label": self.intro_trump.get_abs_rect(),
+                "tips_section": self.intro_tips_title.get_abs_rect(),
+                "continue_button": self.intro_ok_button.get_abs_rect(),
+            }
+        if screen_id == "modal_endgame":
+            return {
+                "overlay": self.endgame_overlay.get_abs_rect(),
+                "panel": self.endgame_panel.get_abs_rect(),
+                "title": self.endgame_title.get_abs_rect(),
+                "loser_name": self.endgame_loser_name.get_abs_rect(),
+                "score_panel": self.endgame_score_panel.get_abs_rect(),
+                "continue_button": self.endgame_continue_button.get_abs_rect(),
+                "end_button": self.endgame_end_button.get_abs_rect(),
+            }
+        return {}

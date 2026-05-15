@@ -93,6 +93,9 @@ class DurakApp:
         self.app_config.sync_layout_schema(
             {
                 "game_table": self.table_screen.layout_schema(),
+                "game_ui": self.ui_controller.layout_schema(),
+                "modal_intro": self.modal_renderer.intro_layout_schema(),
+                "modal_endgame": self.modal_renderer.endgame_layout_schema(),
                 "main_menu": self.menu_screen.layout_schema(),
             }
         )
@@ -447,6 +450,10 @@ class DurakApp:
         if self.state.is_game_over() and self.state.loser_seat == seat:
             parts.append("durak")
         return " | ".join(parts)
+
+    @staticmethod
+    def player_name(seat: str) -> str:
+        return PLAYER_NAMES[seat]
 
     def get_card_front(self, card: Card, size: tuple[int, int]) -> pygame.Surface:
         key = f"{card.image_key}:{size}"

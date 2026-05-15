@@ -23,53 +23,541 @@
     "game_table": {
       "table_area": {
         "delta_x": 0,
-        "delta_y": 0
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.game_table",
+        "type": "panel",
+        "label": "Игровой стол"
+      },
+      "table_cards_area": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.game_table",
+        "type": "card_zone",
+        "label": "Зона карт на столе"
       },
       "player_left_panel": {
         "delta_x": 0,
-        "delta_y": 0
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.game_table",
+        "type": "player_panel",
+        "label": "Левая панель игрока"
       },
       "player_top_panel": {
         "delta_x": 30,
-        "delta_y": -15
+        "delta_y": -15,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.game_table",
+        "type": "player_panel",
+        "label": "Верхняя панель игрока"
       },
       "player_right_panel": {
         "delta_x": 0,
-        "delta_y": 0
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.game_table",
+        "type": "player_panel",
+        "label": "Правая панель игрока"
       },
       "player_bottom_panel": {
         "delta_x": 0,
-        "delta_y": 5
+        "delta_y": 5,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.game_table",
+        "type": "player_panel",
+        "label": "Нижняя панель игрока"
+      },
+      "left_hand_area": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.game_table",
+        "type": "hand_zone",
+        "label": "Левая рука"
+      },
+      "top_hand_area": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.game_table",
+        "type": "hand_zone",
+        "label": "Верхняя рука"
+      },
+      "right_hand_area": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.game_table",
+        "type": "hand_zone",
+        "label": "Правая рука"
+      },
+      "bottom_hand_area": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.game_table",
+        "type": "hand_zone",
+        "label": "Нижняя рука"
       },
       "deck_panel": {
         "delta_x": 0,
-        "delta_y": 0
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.game_table",
+        "type": "card_zone",
+        "label": "Колода"
+      },
+      "trump_panel": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.game_table",
+        "type": "card_zone",
+        "label": "Козырь"
       },
       "actions_panel": {
         "delta_x": -400,
-        "delta_y": -5
+        "delta_y": -5,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.game_table",
+        "type": "panel",
+        "label": "Панель действий"
+      }
+    },
+    "game_ui": {
+      "title_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Заголовок игры"
+      },
+      "subtitle_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Подзаголовок игры"
+      },
+      "attacker_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Статус атаки и защиты"
+      },
+      "meta_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Служебная статистика хода"
+      },
+      "party_meta_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Статус серии игр"
+      },
+      "actions_panel": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "panel",
+        "label": "Панель Actions"
+      },
+      "pass_button": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "button",
+        "label": "Кнопка Pass"
+      },
+      "take_button": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "button",
+        "label": "Кнопка Take"
+      },
+      "restart_button": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "button",
+        "label": "Кнопка Restart"
+      },
+      "surrender_button": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "button",
+        "label": "Кнопка Surrender"
+      },
+      "left_name_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Имя левого игрока"
+      },
+      "left_role_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Роль левого игрока"
+      },
+      "left_loss_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Поражения левого игрока"
+      },
+      "top_name_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Имя верхнего игрока"
+      },
+      "top_role_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Роль верхнего игрока"
+      },
+      "top_loss_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Поражения верхнего игрока"
+      },
+      "right_name_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Имя правого игрока"
+      },
+      "right_role_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Роль правого игрока"
+      },
+      "right_loss_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Поражения правого игрока"
+      },
+      "bottom_name_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Имя игрока You"
+      },
+      "bottom_role_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Роль игрока You"
+      },
+      "bottom_loss_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.gui_layer",
+        "type": "label",
+        "label": "Поражения игрока You"
+      }
+    },
+    "modal_intro": {
+      "overlay": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.modals",
+        "type": "overlay",
+        "label": "Overlay стартового окна"
+      },
+      "panel": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.modals",
+        "type": "modal_panel",
+        "label": "Стартовое модальное окно"
+      },
+      "title": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.modals",
+        "type": "label",
+        "label": "Заголовок стартового окна"
+      },
+      "trump_label": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.modals",
+        "type": "label",
+        "label": "Строка козыря"
+      },
+      "tips_section": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.modals",
+        "type": "label",
+        "label": "Секция подсказок"
+      },
+      "continue_button": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.modals",
+        "type": "button",
+        "label": "Кнопка Continue стартового окна"
+      }
+    },
+    "modal_endgame": {
+      "overlay": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.modals",
+        "type": "overlay",
+        "label": "Overlay финального окна"
+      },
+      "panel": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.modals",
+        "type": "modal_panel",
+        "label": "Финальное модальное окно"
+      },
+      "title": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.modals",
+        "type": "label",
+        "label": "Заголовок финального окна"
+      },
+      "loser_name": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.modals",
+        "type": "label",
+        "label": "Проигравший партии"
+      },
+      "score_panel": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.modals",
+        "type": "panel",
+        "label": "Панель статистики поражений"
+      },
+      "continue_button": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.modals",
+        "type": "button",
+        "label": "Кнопка Continue финального окна"
+      },
+      "end_button": {
+        "delta_x": 0,
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "durak_app.modals",
+        "type": "button",
+        "label": "Кнопка End game"
       }
     },
     "main_menu": {
       "menu_root": {
         "delta_x": 0,
-        "delta_y": 0
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "",
+        "type": "block",
+        "label": "menu_root"
       },
       "deck_panel": {
         "delta_x": 0,
-        "delta_y": 0
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "",
+        "type": "block",
+        "label": "deck_panel"
       },
       "game_settings_panel": {
         "delta_x": 0,
-        "delta_y": 0
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "",
+        "type": "block",
+        "label": "game_settings_panel"
       },
       "start_button": {
         "delta_x": 0,
-        "delta_y": 0
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "",
+        "type": "block",
+        "label": "start_button"
       },
       "exit_button": {
         "delta_x": 0,
-        "delta_y": 0
+        "delta_y": 0,
+        "width_delta": 0,
+        "height_delta": 0,
+        "todo_text": "",
+        "module": "",
+        "type": "block",
+        "label": "exit_button"
       }
     }
   }
