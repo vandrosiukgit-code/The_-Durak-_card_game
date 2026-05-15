@@ -1,6 +1,9 @@
+import math
 import os
 
 import pygame
+import pygame_gui
+from pygame_gui.elements import UIButton, UIImage, UILabel, UIPanel
 
 from .config import (
     ANIMATION_SPEED_LABELS,
@@ -8,9 +11,7 @@ from .config import (
     CARD_FACE_OPTIONS,
     HEIGHT,
     OPENING_MODE_LABELS,
-    PLAYER_NAMES,
     PORTRAIT_SET_OPTIONS,
-    TEXT_COLOR,
     WIDTH,
 )
 from .menu_support import DynamicSquareGrid, ResourceManager
@@ -19,24 +20,89 @@ RATIO_SQUARE = 1.0
 RATIO_CARD = 0.66
 
 BG_COLOR = (15, 15, 25)
-MAIN_PANEL_COLOR = (30, 35, 55)
-SUB_PANEL_COLOR = (40, 50, 80)
-GRID_BASE_COLOR = (25, 30, 50)
-FRAME_COLOR = (80, 95, 130)
 EMPTY_SLOT_COLOR = (35, 40, 60)
-HIGHLIGHT_COLOR = (80, 210, 80)
-HIGHLIGHT_HOVER = (100, 255, 100)
-TEXT_DIM = (130, 140, 160)
+FRAME_COLOR = (80, 95, 130)
 
 
 class MainMenuScreen:
     def __init__(self, app):
         self.app = app
+        self.manager = app.ui_controller.manager
         self.res = ResourceManager(EMPTY_SLOT_COLOR, FRAME_COLOR)
         self.state = "MAIN"
         self.dropdown_open = False
         self.editing_idx = 0
-        self.click_zones = []
+
+        self.root_panel = UIPanel(relative_rect=pygame.Rect(0, 0, 100, 100), manager=self.manager, object_id="#menu_root_panel")
+        self.title_label = UILabel(relative_rect=pygame.Rect(0, 0, 300, 50), text="Settings", manager=self.manager, container=self.root_panel, object_id="#menu_title")
+
+        self.deck_panel = UIPanel(relative_rect=pygame.Rect(0, 0, 100, 100), manager=self.manager, container=self.root_panel, object_id="#menu_sub_panel")
+        self.settings_panel = UIPanel(relative_rect=pygame.Rect(0, 0, 100, 100), manager=self.manager, container=self.root_panel, object_id="#menu_sub_panel")
+
+        self.portraits_title = UILabel(relative_rect=pygame.Rect(0, 0, 200, 28), text="Portraits", manager=self.manager, container=self.deck_panel, object_id="#menu_section")
+        self.back_title = UILabel(relative_rect=pygame.Rect(0, 0, 200, 28), text="Card back", manager=self.manager, container=self.deck_panel, object_id="#menu_section")
+        self.faces_title = UILabel(relative_rect=pygame.Rect(0, 0, 200, 28), text="Deck", manager=self.manager, container=self.deck_panel, object_id="#menu_section")
+        self.preview_title = UILabel(relative_rect=pygame.Rect(0, 0, 200, 28), text="Preview", manager=self.manager, container=self.deck_panel, object_id="#menu_section")
+
+        self.portrait_images: list[UIImage] = []
+        self.portrait_buttons: list[UIButton] = []
+        self.portrait_labels: list[UILabel] = []
+        for text in ["Bot: Left", "Bot: Top", "Bot: Right", "Player: You"]:
+            image = UIImage(relative_rect=pygame.Rect(0, 0, 60, 60), image_surface=pygame.Surface((60, 60)), manager=self.manager, container=self.deck_panel)
+            button = UIButton(relative_rect=pygame.Rect(0, 0, 60, 60), text="", manager=self.manager, container=self.deck_panel, object_id="#menu_image_button")
+            label = UILabel(relative_rect=pygame.Rect(0, 0, 150, 24), text=text, manager=self.manager, container=self.deck_panel, object_id="#menu_small_text")
+            self.portrait_images.append(image)
+            self.portrait_buttons.append(button)
+            self.portrait_labels.append(label)
+
+        self.back_image = UIImage(relative_rect=pygame.Rect(0, 0, 60, 90), image_surface=pygame.Surface((60, 90)), manager=self.manager, container=self.deck_panel)
+        self.back_button = UIButton(relative_rect=pygame.Rect(0, 0, 60, 90), text="", manager=self.manager, container=self.deck_panel, object_id="#menu_image_button")
+
+        self.face_images: list[UIImage] = []
+        self.face_buttons: list[UIButton] = []
+        for _ in range(16):
+            image = UIImage(relative_rect=pygame.Rect(0, 0, 40, 60), image_surface=pygame.Surface((40, 60)), manager=self.manager, container=self.deck_panel)
+            button = UIButton(relative_rect=pygame.Rect(0, 0, 40, 60), text="", manager=self.manager, container=self.deck_panel, object_id="#menu_image_button")
+            self.face_images.append(image)
+            self.face_buttons.append(button)
+
+        self.preview_image = UIImage(relative_rect=pygame.Rect(0, 0, 80, 120), image_surface=pygame.Surface((80, 120)), manager=self.manager, container=self.deck_panel)
+        self.face_set_button = UIButton(relative_rect=pygame.Rect(0, 0, 200, 36), text="", manager=self.manager, container=self.deck_panel, object_id="#menu_value_button")
+
+        self.settings_title = UILabel(relative_rect=pygame.Rect(0, 0, 240, 30), text="Game settings", manager=self.manager, container=self.settings_panel, object_id="#menu_section")
+
+        self.anim_label = UILabel(relative_rect=pygame.Rect(0, 0, 180, 24), text="Animation speed", manager=self.manager, container=self.settings_panel, object_id="#menu_small_text")
+        self.anim_prev = UIButton(relative_rect=pygame.Rect(0, 0, 30, 30), text="<", manager=self.manager, container=self.settings_panel, object_id="#menu_small_button")
+        self.anim_value = UILabel(relative_rect=pygame.Rect(0, 0, 180, 30), text="", manager=self.manager, container=self.settings_panel, object_id="#menu_value_label")
+        self.anim_next = UIButton(relative_rect=pygame.Rect(0, 0, 30, 30), text=">", manager=self.manager, container=self.settings_panel, object_id="#menu_small_button")
+
+        self.loss_label = UILabel(relative_rect=pygame.Rect(0, 0, 180, 24), text="Loss limit", manager=self.manager, container=self.settings_panel, object_id="#menu_small_text")
+        self.loss_minus = UIButton(relative_rect=pygame.Rect(0, 0, 30, 30), text="-", manager=self.manager, container=self.settings_panel, object_id="#menu_small_button")
+        self.loss_value = UILabel(relative_rect=pygame.Rect(0, 0, 180, 30), text="", manager=self.manager, container=self.settings_panel, object_id="#menu_value_label")
+        self.loss_plus = UIButton(relative_rect=pygame.Rect(0, 0, 30, 30), text="+", manager=self.manager, container=self.settings_panel, object_id="#menu_small_button")
+
+        self.mode_label = UILabel(relative_rect=pygame.Rect(0, 0, 180, 24), text="Opening move", manager=self.manager, container=self.settings_panel, object_id="#menu_small_text")
+        self.mode_prev = UIButton(relative_rect=pygame.Rect(0, 0, 30, 30), text="<", manager=self.manager, container=self.settings_panel, object_id="#menu_small_button")
+        self.mode_value = UILabel(relative_rect=pygame.Rect(0, 0, 180, 30), text="", manager=self.manager, container=self.settings_panel, object_id="#menu_value_label")
+        self.mode_next = UIButton(relative_rect=pygame.Rect(0, 0, 30, 30), text=">", manager=self.manager, container=self.settings_panel, object_id="#menu_small_button")
+
+        self.prepared_title = UILabel(relative_rect=pygame.Rect(0, 0, 220, 24), text="Prepared themes", manager=self.manager, container=self.settings_panel, object_id="#menu_small_text")
+        self.back_count = UILabel(relative_rect=pygame.Rect(0, 0, 220, 24), text="", manager=self.manager, container=self.settings_panel, object_id="#menu_plain_text")
+        self.face_count = UILabel(relative_rect=pygame.Rect(0, 0, 220, 24), text="", manager=self.manager, container=self.settings_panel, object_id="#menu_plain_text")
+        self.portrait_count = UILabel(relative_rect=pygame.Rect(0, 0, 220, 24), text="", manager=self.manager, container=self.settings_panel, object_id="#menu_plain_text")
+
+        self.start_button = UIButton(relative_rect=pygame.Rect(0, 0, 240, 50), text="Start party", manager=self.manager, container=self.root_panel, object_id="#primary_button")
+        self.exit_button = UIButton(relative_rect=pygame.Rect(0, 0, 180, 50), text="Exit", manager=self.manager, container=self.root_panel, object_id="#action_button")
+
+        self.dropdown_panel = UIPanel(relative_rect=pygame.Rect(0, 0, 100, 100), manager=self.manager, container=self.root_panel, object_id="#menu_dropdown_panel")
+        self.dropdown_buttons: list[UIButton] = []
+
+        self.overlay_panel = UIPanel(relative_rect=pygame.Rect(0, 0, 100, 100), manager=self.manager, object_id="#menu_overlay_panel")
+        self.overlay_title = UILabel(relative_rect=pygame.Rect(0, 0, 400, 36), text="", manager=self.manager, container=self.overlay_panel, object_id="#menu_title")
+        self.overlay_images: list[UIImage] = []
+        self.overlay_buttons: list[UIButton] = []
+
+        self._hide_optional_panels()
 
     @staticmethod
     def layout_schema() -> dict[str, dict[str, int]]:
@@ -131,65 +197,37 @@ class MainMenuScreen:
         cards = filtered[:16] + [""] * (16 - len(filtered[:16]))
         return current_joker, cards
 
-    def draw_text(self, text, pos, size=20, color=TEXT_COLOR, anchor="center"):
-        font = pygame.font.SysFont("Arial", size, bold=True)
-        surf = font.render(str(text), True, color)
-        rect = surf.get_rect(**{anchor: pos})
-        self.app.screen.blit(surf, rect)
-        return rect
+    def _grid_item_rects(self, x, y, items, grid: DynamicSquareGrid, labels: bool = False):
+        rects = []
+        total_elements = len(items)
+        if total_elements == 0:
+            return rects
+        n = 2 if total_elements <= 4 else math.ceil(math.sqrt(total_elements))
+        n = max(1, n)
+        cell_size = grid.S / n
+        item_h = cell_size * (1 - grid.spacing_ratio)
+        item_w = item_h * grid.aspect_ratio
+        offset_x = (cell_size - item_w) / 2
+        text_space = 24 if labels else 0
+        free_space_y = cell_size - (item_h + text_space)
+        offset_y = (free_space_y / 3) * 2 if labels else free_space_y / 2
+        for k in range(total_elements):
+            row = math.floor(k / n)
+            col = k % n
+            x_local = col * cell_size
+            y_local = row * cell_size
+            final_x = x + x_local + offset_x
+            final_y = y + y_local + offset_y
+            rects.append(pygame.Rect(int(final_x), int(final_y), int(item_w), int(item_h)))
+        return rects
 
-    def draw_selector(self, label, value_text, x, y, width, action_prev, action_next, mouse_pos):
-        self.draw_text(label, (x, y), 16, TEXT_DIM, anchor="topleft")
-        btn_w, btn_h = 30, 30
-        val_w = width - (btn_w * 2) - 10
-        l_rect = pygame.Rect(x, y + 25, btn_w, btn_h)
-        l_hov = mouse_pos and l_rect.collidepoint(mouse_pos)
-        pygame.draw.rect(self.app.screen, HIGHLIGHT_COLOR if l_hov else FRAME_COLOR, l_rect, border_radius=6)
-        self.draw_text("<", l_rect.center, 18, BG_COLOR if l_hov else TEXT_COLOR)
-        self.click_zones.append((l_rect, action_prev))
-
-        val_rect = pygame.Rect(l_rect.right + 5, y + 25, val_w, btn_h)
-        pygame.draw.rect(self.app.screen, GRID_BASE_COLOR, val_rect, border_radius=6)
-        pygame.draw.rect(self.app.screen, FRAME_COLOR, val_rect, 1, border_radius=6)
-        self.draw_text(value_text, val_rect.center, 16, TEXT_COLOR)
-
-        r_rect = pygame.Rect(val_rect.right + 5, y + 25, btn_w, btn_h)
-        r_hov = mouse_pos and r_rect.collidepoint(mouse_pos)
-        pygame.draw.rect(self.app.screen, HIGHLIGHT_COLOR if r_hov else FRAME_COLOR, r_rect, border_radius=6)
-        self.draw_text(">", r_rect.center, 18, BG_COLOR if r_hov else TEXT_COLOR)
-        self.click_zones.append((r_rect, action_next))
-
-    def draw_stepper(self, label, value, x, y, width, action_minus, action_plus, mouse_pos):
-        self.draw_text(label, (x, y), 16, TEXT_DIM, anchor="topleft")
-        btn_w, btn_h = 30, 30
-        val_w = width - (btn_w * 2) - 10
-        m_rect = pygame.Rect(x, y + 25, btn_w, btn_h)
-        m_hov = mouse_pos and m_rect.collidepoint(mouse_pos)
-        pygame.draw.rect(self.app.screen, HIGHLIGHT_COLOR if m_hov else FRAME_COLOR, m_rect, border_radius=6)
-        self.draw_text("-", m_rect.center, 22, BG_COLOR if m_hov else TEXT_COLOR)
-        self.click_zones.append((m_rect, action_minus))
-
-        val_rect = pygame.Rect(m_rect.right + 5, y + 25, val_w, btn_h)
-        pygame.draw.rect(self.app.screen, GRID_BASE_COLOR, val_rect, border_radius=6)
-        pygame.draw.rect(self.app.screen, FRAME_COLOR, val_rect, 1, border_radius=6)
-        self.draw_text(str(value), val_rect.center, 18, TEXT_COLOR)
-
-        p_rect = pygame.Rect(val_rect.right + 5, y + 25, btn_w, btn_h)
-        p_hov = mouse_pos and p_rect.collidepoint(mouse_pos)
-        pygame.draw.rect(self.app.screen, HIGHLIGHT_COLOR if p_hov else FRAME_COLOR, p_rect, border_radius=6)
-        self.draw_text("+", p_rect.center, 20, BG_COLOR if p_hov else TEXT_COLOR)
-        self.click_zones.append((p_rect, action_plus))
-
-    def render_main(self, mouse_pos):
+    def compute_main_layout(self):
         block_rects = self.get_block_rects()
         root_rect = block_rects["menu_root"]
-
-        pygame.draw.rect(self.app.screen, MAIN_PANEL_COLOR, root_rect, border_radius=25)
-        pygame.draw.rect(self.app.screen, FRAME_COLOR, root_rect, 3, border_radius=25)
-        self.draw_text("SETTINGS", (root_rect.centerx, root_rect.y + 35), 32)
-
         deck_rect = block_rects["deck_panel"]
-        pygame.draw.rect(self.app.screen, SUB_PANEL_COLOR, deck_rect, border_radius=20)
+        game_rect = block_rects["game_settings_panel"]
+        start_rect = block_rects["start_button"]
+        exit_rect = block_rects["exit_button"]
 
         inner_padding = 60
         grid_h = deck_rect.height - inner_padding * 1.5
@@ -209,267 +247,389 @@ class MainMenuScreen:
         card_x = portrait_x + portrait_grid.S + gap_between_elements
         faces_x = card_x + card_w + gap_between_elements
         preview_x = faces_x + faces_grid.S + gap_between_elements
-        title_y = grid_y - 15
-
-        self.draw_text("Portraits", (portrait_x + portrait_grid.S / 2, title_y), 22, anchor="midbottom")
-        self.draw_text("Card back", (card_x + card_w / 2, title_y), 22, anchor="midbottom")
-        self.draw_text("Deck", (faces_x + faces_grid.S / 2, title_y), 22, anchor="midbottom")
-        self.draw_text("Preview", (preview_x + preview_w / 2, title_y), 22, anchor="midbottom")
 
         portraits = [self.app.selected_portrait_files[seat] for seat in ("left", "top", "right", "bottom")]
-        portrait_grid.calculate_and_draw(
-            self.app.screen,
-            portrait_x,
-            grid_y,
-            portraits,
-            self.portraits_dir,
-            self.res,
-            self.click_zones,
-            "edit_p",
-            labels=["Bot: Left", "Bot: Top", "Bot: Right", "Player: You"],
-            draw_text_fn=self.draw_text,
-            mouse_pos=mouse_pos,
-            colors={"grid_base": GRID_BASE_COLOR, "frame": FRAME_COLOR, "empty_slot": EMPTY_SLOT_COLOR, "highlight": HIGHLIGHT_COLOR, "text": TEXT_COLOR},
-        )
-
-        current_back_file = self.app.custom_back_file or os.path.basename(self.app.option_by_id(CARD_BACK_OPTIONS, self.app.selected_card_back)["path"])
-        card_h = portrait_grid.S
-        card_y = grid_y
-        card_rect = pygame.Rect(card_x, card_y, card_w, card_h)
-        is_card_hovered = mouse_pos and card_rect.collidepoint(mouse_pos)
-        if is_card_hovered:
-            scale = 1.05
-            h_w, h_h = card_w * scale, card_h * scale
-            draw_rect = pygame.Rect(card_x - (h_w - card_w) / 2, card_y - (h_h - card_h) / 2, h_w, h_h)
-            img = self.res.get_img(self.backs_dir, current_back_file, (int(h_w), int(h_h)))
-            self.app.screen.blit(img, draw_rect)
-            pygame.draw.rect(self.app.screen, HIGHLIGHT_COLOR, draw_rect, 3, border_radius=10)
-        else:
-            pygame.draw.rect(self.app.screen, EMPTY_SLOT_COLOR, card_rect, border_radius=10)
-            img = self.res.get_img(self.backs_dir, current_back_file, (int(card_w), int(card_h)))
-            self.app.screen.blit(img, card_rect)
-            pygame.draw.rect(self.app.screen, FRAME_COLOR, card_rect, 1, border_radius=10)
-        self.click_zones.append((card_rect, "edit_b_0"))
-
         current_joker, current_face_cards = self._current_face_cards()
-        faces_grid.calculate_and_draw(
-            self.app.screen,
-            faces_x,
-            grid_y,
-            current_face_cards,
-            self.app.current_fronts_dir,
-            self.res,
-            self.click_zones,
-            "edit_f",
-            mouse_pos=mouse_pos,
-            colors={"grid_base": GRID_BASE_COLOR, "frame": FRAME_COLOR, "empty_slot": EMPTY_SLOT_COLOR, "highlight": HIGHLIGHT_COLOR, "text": TEXT_COLOR},
-        )
+        current_back_file = self.app.custom_back_file or os.path.basename(self.app.option_by_id(CARD_BACK_OPTIONS, self.app.selected_card_back)["path"])
 
-        btn_w = faces_grid.S
-        btn_rect = pygame.Rect(faces_x, grid_y + faces_grid.S + 4, btn_w, 36)
-        is_btn_hovered = mouse_pos and btn_rect.collidepoint(mouse_pos)
-        pygame.draw.rect(self.app.screen, GRID_BASE_COLOR, btn_rect, border_radius=10)
-        pygame.draw.rect(self.app.screen, HIGHLIGHT_COLOR if is_btn_hovered else FRAME_COLOR, btn_rect, width=2, border_radius=10)
-        current_face_name = os.path.basename(self.app.current_fronts_dir)
-        self.draw_text(f"Deck: {current_face_name}", btn_rect.center, 16, TEXT_COLOR)
-        self.click_zones.append((btn_rect, "toggle_dropdown"))
-
-        preview_rect = pygame.Rect(preview_x, grid_y, preview_w, preview_h)
-        active_preview_file = current_joker
-        for i, f in enumerate(current_face_cards):
-            if not f:
-                continue
-            for rect, action in self.click_zones:
-                if action == f"edit_f_{i}" and mouse_pos and rect.collidepoint(mouse_pos):
-                    active_preview_file = f
-                    break
-        pygame.draw.rect(self.app.screen, EMPTY_SLOT_COLOR, preview_rect, border_radius=10)
-        if active_preview_file:
-            img = self.res.get_img(self.app.current_fronts_dir, active_preview_file, (int(preview_w), int(preview_h)))
-            self.app.screen.blit(img, preview_rect)
-        pygame.draw.rect(self.app.screen, HIGHLIGHT_COLOR if active_preview_file and active_preview_file != current_joker else FRAME_COLOR, preview_rect, 3 if active_preview_file and active_preview_file != current_joker else 1, border_radius=10)
-
-        game_rect = block_rects["game_settings_panel"]
-        pygame.draw.rect(self.app.screen, SUB_PANEL_COLOR, game_rect, border_radius=20)
-        self.draw_text("Game settings", (game_rect.centerx, game_rect.y + 20), 24, TEXT_COLOR)
-        pygame.draw.line(self.app.screen, FRAME_COLOR, (game_rect.x + 40, game_rect.y + 40), (game_rect.right - 40, game_rect.y + 40), 2)
+        btn_rect = pygame.Rect(faces_x, grid_y + faces_grid.S + 4, faces_grid.S, 36)
 
         col_w = game_rect.width // 3
         pad_x = 40
         ui_w = col_w - pad_x * 2
         start_y = game_rect.y + 60
         y_step = 65
-
         col1_x = game_rect.x + pad_x
-        self.draw_text("Screen & Motion", (col1_x + ui_w / 2, start_y), 18, HIGHLIGHT_COLOR)
-        self.draw_selector("Animation speed", ANIMATION_SPEED_LABELS[self.app.selected_animation_speed], col1_x, start_y + 25, ui_w, "anim_prev", "anim_next", mouse_pos)
-
         col2_x = game_rect.x + col_w + pad_x
-        self.draw_text("Match rules", (col2_x + ui_w / 2, start_y), 18, HIGHLIGHT_COLOR)
-        self.draw_stepper("Loss limit", self.app.selected_losses_to_finish, col2_x, start_y + 25, ui_w, "loss_minus", "loss_plus", mouse_pos)
-        self.draw_selector("Opening move", OPENING_MODE_LABELS[self.app.selected_opening_mode], col2_x, start_y + 25 + y_step, ui_w, "mode_prev", "mode_next", mouse_pos)
-
         col3_x = game_rect.x + col_w * 2 + pad_x
-        self.draw_text("Prepared themes", (col3_x + ui_w / 2, start_y), 18, HIGHLIGHT_COLOR)
-        self.draw_text(f"Back sets: {len(CARD_BACK_OPTIONS)}", (col3_x, start_y + 35), 16, TEXT_COLOR, anchor="topleft")
-        self.draw_text(f"Face sets: {len(self._scan_dirs(self.faces_base_dir))}", (col3_x, start_y + 65), 16, TEXT_COLOR, anchor="topleft")
-        self.draw_text(f"Portrait sets: {len(PORTRAIT_SET_OPTIONS)}", (col3_x, start_y + 95), 16, TEXT_COLOR, anchor="topleft")
 
-        accept_rect = block_rects["start_button"]
-        is_accept_hovered = mouse_pos and accept_rect.collidepoint(mouse_pos)
-        btn_color = HIGHLIGHT_HOVER if is_accept_hovered else HIGHLIGHT_COLOR
-        pygame.draw.rect(self.app.screen, btn_color, accept_rect, border_radius=15)
-        pygame.draw.rect(self.app.screen, TEXT_COLOR if is_accept_hovered else FRAME_COLOR, accept_rect, 2, border_radius=15)
-        self.draw_text("START PARTY", accept_rect.center, 24, BG_COLOR)
-        self.click_zones.append((accept_rect, "accept_config"))
+        return {
+            "block_rects": block_rects,
+            "root_rect": root_rect,
+            "deck_rect": deck_rect,
+            "game_rect": game_rect,
+            "start_rect": start_rect,
+            "exit_rect": exit_rect,
+            "portrait_grid": portrait_grid,
+            "faces_grid": faces_grid,
+            "grid_y": grid_y,
+            "portrait_x": portrait_x,
+            "card_x": card_x,
+            "card_w": card_w,
+            "faces_x": faces_x,
+            "preview_x": preview_x,
+            "preview_h": preview_h,
+            "preview_w": preview_w,
+            "portraits": portraits,
+            "current_joker": current_joker,
+            "current_face_cards": current_face_cards,
+            "current_back_file": current_back_file,
+            "btn_rect": btn_rect,
+            "col1_x": col1_x,
+            "col2_x": col2_x,
+            "col3_x": col3_x,
+            "ui_w": ui_w,
+            "start_y": start_y,
+            "y_step": y_step,
+        }
 
-        exit_rect = block_rects["exit_button"]
-        is_exit_hovered = mouse_pos and exit_rect.collidepoint(mouse_pos)
-        pygame.draw.rect(self.app.screen, HIGHLIGHT_HOVER if is_exit_hovered else FRAME_COLOR, exit_rect, border_radius=15)
-        pygame.draw.rect(self.app.screen, TEXT_COLOR if is_exit_hovered else FRAME_COLOR, exit_rect, 2, border_radius=15)
-        self.draw_text("EXIT", exit_rect.center, 24, BG_COLOR if is_exit_hovered else TEXT_COLOR)
-        self.click_zones.append((exit_rect, "exit_app"))
+    def _hide_optional_panels(self) -> None:
+        self.dropdown_panel.hide()
+        self.overlay_panel.hide()
 
-        if self.dropdown_open:
-            face_sets = self._scan_dirs(self.faces_base_dir)
-            dd_y = btn_rect.bottom + 4
-            dd_h = len(face_sets) * 36
-            dd_rect = pygame.Rect(btn_rect.x, dd_y, btn_rect.width, dd_h)
-            pygame.draw.rect(self.app.screen, MAIN_PANEL_COLOR, dd_rect, border_radius=10)
-            pygame.draw.rect(self.app.screen, FRAME_COLOR, dd_rect, width=2, border_radius=10)
-            for i, fset in enumerate(face_sets):
-                item_rect = pygame.Rect(dd_rect.x, dd_rect.y + i * 36, dd_rect.width, 36)
-                is_item_hovered = mouse_pos and item_rect.collidepoint(mouse_pos)
-                if is_item_hovered:
-                    pygame.draw.rect(self.app.screen, SUB_PANEL_COLOR, item_rect, border_radius=10)
-                text_color = HIGHLIGHT_COLOR if os.path.basename(self.app.current_fronts_dir) == fset else TEXT_COLOR
-                self.draw_text(f"Deck: {fset}", item_rect.center, 16, text_color)
-                self.click_zones.append((item_rect, f"select_fset_{i}"))
+    def _ensure_dynamic_ui_count(self, images: list[UIImage], buttons: list[UIButton], count: int, container: UIPanel, button_id: str) -> None:
+        while len(images) < count:
+            images.append(UIImage(relative_rect=pygame.Rect(0, 0, 60, 60), image_surface=pygame.Surface((60, 60)), manager=self.manager, container=container))
+            buttons.append(UIButton(relative_rect=pygame.Rect(0, 0, 60, 60), text="", manager=self.manager, container=container, object_id=button_id))
 
-    def render_overlay(self, files, folder, title, prefix, aspect_ratio, mouse_pos, labels=None):
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 100))
-        self.app.screen.blit(overlay, (0, 0))
+    def _ensure_dropdown_count(self, count: int) -> None:
+        while len(self.dropdown_buttons) < count:
+            self.dropdown_buttons.append(
+                UIButton(relative_rect=pygame.Rect(0, 0, 220, 32), text="", manager=self.manager, container=self.dropdown_panel, object_id="#menu_option_button")
+            )
 
+    def _surface_for_file(self, folder: str, filename: str, size: tuple[int, int]) -> pygame.Surface:
+        if not filename:
+            surface = pygame.Surface(size, pygame.SRCALPHA)
+            surface.fill(EMPTY_SLOT_COLOR)
+            return surface
+        return self.res.get_img(folder, filename, size)
+
+    def _sync_main_layout(self) -> dict:
+        layout = self.compute_main_layout()
+        root_rect = layout["root_rect"]
+        deck_rect = layout["deck_rect"]
+        game_rect = layout["game_rect"]
+        start_rect = layout["start_rect"]
+        exit_rect = layout["exit_rect"]
+
+        self.root_panel.set_relative_position((root_rect.x, root_rect.y))
+        self.root_panel.set_dimensions((root_rect.width, root_rect.height))
+        self.deck_panel.set_relative_position((deck_rect.x - root_rect.x, deck_rect.y - root_rect.y))
+        self.deck_panel.set_dimensions((deck_rect.width, deck_rect.height))
+        self.settings_panel.set_relative_position((game_rect.x - root_rect.x, game_rect.y - root_rect.y))
+        self.settings_panel.set_dimensions((game_rect.width, game_rect.height))
+        self.start_button.set_relative_position((start_rect.x - root_rect.x, start_rect.y - root_rect.y))
+        self.start_button.set_dimensions((start_rect.width, start_rect.height))
+        self.exit_button.set_relative_position((exit_rect.x - root_rect.x, exit_rect.y - root_rect.y))
+        self.exit_button.set_dimensions((exit_rect.width, exit_rect.height))
+
+        self.title_label.set_relative_position(((root_rect.width - 300) // 2, 18))
+
+        deck_local_x = deck_rect.x
+        deck_local_y = deck_rect.y
+        game_local_x = game_rect.x
+        game_local_y = game_rect.y
+
+        title_y = layout["grid_y"] - deck_local_y - 30
+        self.portraits_title.set_relative_position((layout["portrait_x"] - deck_local_x + max(0, int((layout["portrait_grid"].S - 200) / 2)), title_y))
+        self.back_title.set_relative_position((layout["card_x"] - deck_local_x + max(0, int((layout["card_w"] - 200) / 2)), title_y))
+        self.faces_title.set_relative_position((layout["faces_x"] - deck_local_x + max(0, int((layout["faces_grid"].S - 200) / 2)), title_y))
+        self.preview_title.set_relative_position((layout["preview_x"] - deck_local_x + max(0, int((layout["preview_w"] - 200) / 2)), title_y))
+
+        portrait_rects = self._grid_item_rects(layout["portrait_x"], layout["grid_y"], layout["portraits"], layout["portrait_grid"], labels=True)
+        for idx, rect in enumerate(portrait_rects[:4]):
+            local_rect = rect.move(-deck_local_x, -deck_local_y)
+            self.portrait_images[idx].set_relative_position((local_rect.x, local_rect.y))
+            self.portrait_images[idx].set_dimensions((local_rect.width, local_rect.height))
+            self.portrait_buttons[idx].set_relative_position((local_rect.x, local_rect.y))
+            self.portrait_buttons[idx].set_dimensions((local_rect.width, local_rect.height))
+            self.portrait_labels[idx].set_relative_position((local_rect.x - 20, local_rect.bottom + 4))
+
+        back_rect = pygame.Rect(int(layout["card_x"]), int(layout["grid_y"]), int(layout["card_w"]), int(layout["portrait_grid"].S))
+        back_local = back_rect.move(-deck_local_x, -deck_local_y)
+        self.back_image.set_relative_position((back_local.x, back_local.y))
+        self.back_image.set_dimensions((back_local.width, back_local.height))
+        self.back_button.set_relative_position((back_local.x, back_local.y))
+        self.back_button.set_dimensions((back_local.width, back_local.height))
+
+        face_rects = self._grid_item_rects(layout["faces_x"], layout["grid_y"], layout["current_face_cards"], layout["faces_grid"])
+        for idx, rect in enumerate(face_rects):
+            local_rect = rect.move(-deck_local_x, -deck_local_y)
+            self.face_images[idx].set_relative_position((local_rect.x, local_rect.y))
+            self.face_images[idx].set_dimensions((local_rect.width, local_rect.height))
+            self.face_buttons[idx].set_relative_position((local_rect.x, local_rect.y))
+            self.face_buttons[idx].set_dimensions((local_rect.width, local_rect.height))
+            self.face_images[idx].show()
+            self.face_buttons[idx].show()
+        for idx in range(len(face_rects), len(self.face_images)):
+            self.face_images[idx].hide()
+            self.face_buttons[idx].hide()
+
+        preview_local = pygame.Rect(int(layout["preview_x"] - deck_local_x), int(layout["grid_y"] - deck_local_y), int(layout["preview_w"]), int(layout["preview_h"]))
+        self.preview_image.set_relative_position((preview_local.x, preview_local.y))
+        self.preview_image.set_dimensions((preview_local.width, preview_local.height))
+
+        btn_local = layout["btn_rect"].move(-deck_local_x, -deck_local_y)
+        self.face_set_button.set_relative_position((btn_local.x, btn_local.y))
+        self.face_set_button.set_dimensions((btn_local.width, btn_local.height))
+
+        self.settings_title.set_relative_position(((game_rect.width - 240) // 2, 16))
+
+        col1_x = layout["col1_x"] - game_local_x
+        col2_x = layout["col2_x"] - game_local_x
+        col3_x = layout["col3_x"] - game_local_x
+        ui_w = layout["ui_w"]
+        start_y = layout["start_y"] - game_local_y
+        y_step = layout["y_step"]
+        btn_w, btn_h = 30, 30
+        val_w = ui_w - (btn_w * 2) - 10
+
+        self.anim_label.set_relative_position((col1_x, start_y + 10))
+        self.anim_prev.set_relative_position((col1_x, start_y + 42))
+        self.anim_prev.set_dimensions((btn_w, btn_h))
+        self.anim_value.set_relative_position((col1_x + btn_w + 5, start_y + 42))
+        self.anim_value.set_dimensions((val_w, btn_h))
+        self.anim_next.set_relative_position((col1_x + btn_w + 5 + val_w + 5, start_y + 42))
+        self.anim_next.set_dimensions((btn_w, btn_h))
+
+        self.loss_label.set_relative_position((col2_x, start_y + 10))
+        self.loss_minus.set_relative_position((col2_x, start_y + 42))
+        self.loss_minus.set_dimensions((btn_w, btn_h))
+        self.loss_value.set_relative_position((col2_x + btn_w + 5, start_y + 42))
+        self.loss_value.set_dimensions((val_w, btn_h))
+        self.loss_plus.set_relative_position((col2_x + btn_w + 5 + val_w + 5, start_y + 42))
+        self.loss_plus.set_dimensions((btn_w, btn_h))
+
+        self.mode_label.set_relative_position((col2_x, start_y + 10 + y_step))
+        self.mode_prev.set_relative_position((col2_x, start_y + 42 + y_step))
+        self.mode_prev.set_dimensions((btn_w, btn_h))
+        self.mode_value.set_relative_position((col2_x + btn_w + 5, start_y + 42 + y_step))
+        self.mode_value.set_dimensions((val_w, btn_h))
+        self.mode_next.set_relative_position((col2_x + btn_w + 5 + val_w + 5, start_y + 42 + y_step))
+        self.mode_next.set_dimensions((btn_w, btn_h))
+
+        self.prepared_title.set_relative_position((col3_x, start_y + 10))
+        self.back_count.set_relative_position((col3_x, start_y + 46))
+        self.face_count.set_relative_position((col3_x, start_y + 74))
+        self.portrait_count.set_relative_position((col3_x, start_y + 102))
+
+        return layout
+
+    def _sync_content(self, layout: dict, mouse_pos: tuple[int, int]) -> None:
+        portraits = layout["portraits"]
+        current_back_file = layout["current_back_file"]
+        current_joker = layout["current_joker"]
+        current_face_cards = layout["current_face_cards"]
+
+        for idx, filename in enumerate(portraits):
+            rect = self.portrait_images[idx].get_abs_rect()
+            self.portrait_images[idx].set_image(self._surface_for_file(self.portraits_dir, filename, rect.size))
+
+        back_rect = self.back_image.get_abs_rect()
+        self.back_image.set_image(self._surface_for_file(self.backs_dir, current_back_file, back_rect.size))
+
+        hover_preview = current_joker
+        for idx, filename in enumerate(current_face_cards):
+            rect = self.face_images[idx].get_abs_rect()
+            self.face_images[idx].set_image(self._surface_for_file(self.app.current_fronts_dir, filename, rect.size))
+            if filename and self.face_buttons[idx].get_abs_rect().collidepoint(mouse_pos):
+                hover_preview = filename
+
+        preview_rect = self.preview_image.get_abs_rect()
+        self.preview_image.set_image(self._surface_for_file(self.app.current_fronts_dir, hover_preview, preview_rect.size))
+
+        self.face_set_button.set_text(f"Deck: {os.path.basename(self.app.current_fronts_dir)}")
+        self.anim_value.set_text(ANIMATION_SPEED_LABELS[self.app.selected_animation_speed])
+        self.loss_value.set_text(str(self.app.selected_losses_to_finish))
+        self.mode_value.set_text(OPENING_MODE_LABELS[self.app.selected_opening_mode])
+        self.back_count.set_text(f"Back sets: {len(CARD_BACK_OPTIONS)}")
+        self.face_count.set_text(f"Face sets: {len(self._scan_dirs(self.faces_base_dir))}")
+        self.portrait_count.set_text(f"Portrait sets: {len(PORTRAIT_SET_OPTIONS)}")
+
+        self._sync_dropdown()
+        self._sync_overlay()
+
+    def _sync_dropdown(self) -> None:
+        if not self.dropdown_open or not self.app.menu_visible:
+            self.dropdown_panel.hide()
+            for button in self.dropdown_buttons:
+                button.hide()
+            return
+
+        face_sets = self._scan_dirs(self.faces_base_dir)
+        self._ensure_dropdown_count(len(face_sets))
+        button_rect = self.face_set_button.get_abs_rect()
+        root_rect = self.root_panel.get_abs_rect()
+        height = max(42, len(face_sets) * 36 + 8)
+        self.dropdown_panel.set_relative_position((button_rect.x - root_rect.x, button_rect.bottom - root_rect.y + 4))
+        self.dropdown_panel.set_dimensions((button_rect.width, height))
+        self.dropdown_panel.show()
+        for idx, button in enumerate(self.dropdown_buttons):
+            if idx < len(face_sets):
+                button.set_relative_position((4, 4 + idx * 36))
+                button.set_dimensions((button_rect.width - 8, 32))
+                button.set_text(face_sets[idx])
+                button.show()
+            else:
+                button.hide()
+
+    def _sync_overlay(self) -> None:
+        if self.state not in {"SELECT_P", "SELECT_B"} or not self.app.menu_visible:
+            self.overlay_panel.hide()
+            for image in self.overlay_images:
+                image.hide()
+            for button in self.overlay_buttons:
+                button.hide()
+            return
+
+        files = self._scan(self.portraits_dir) if self.state == "SELECT_P" else self._scan(self.backs_dir)
+        aspect_ratio = RATIO_SQUARE if self.state == "SELECT_P" else RATIO_CARD
         modal_h = 500
         modal_grid = DynamicSquareGrid(parent_height=modal_h, padding=20, spacing_ratio=0.1, aspect_ratio=aspect_ratio)
         m_x = (WIDTH - modal_grid.S - 80) // 2
         m_y = (HEIGHT - modal_h - 120) // 2
-        modal_bg = pygame.Rect(m_x, m_y, modal_grid.S + 80, modal_h + 120)
-        pygame.draw.rect(self.app.screen, MAIN_PANEL_COLOR, modal_bg, border_radius=25)
-        pygame.draw.rect(self.app.screen, FRAME_COLOR, modal_bg, 3, border_radius=25)
-        self.draw_text(title, (modal_bg.centerx, modal_bg.y + 40), 32, color=TEXT_COLOR)
-        modal_grid.calculate_and_draw(
-            self.app.screen,
-            m_x + 40,
-            m_y + 90,
-            files,
-            folder,
-            self.res,
-            self.click_zones,
-            prefix,
-            mouse_pos=mouse_pos,
-            labels=labels,
-            draw_text_fn=self.draw_text if labels else None,
-            colors={"grid_base": GRID_BASE_COLOR, "frame": FRAME_COLOR, "empty_slot": EMPTY_SLOT_COLOR, "highlight": HIGHLIGHT_COLOR, "text": TEXT_COLOR},
-        )
+        overlay_rect = pygame.Rect(m_x, m_y, modal_grid.S + 80, modal_h + 120)
+        self.overlay_panel.set_relative_position((overlay_rect.x, overlay_rect.y))
+        self.overlay_panel.set_dimensions((overlay_rect.width, overlay_rect.height))
+        self.overlay_title.set_relative_position(((overlay_rect.width - 400) // 2, 20))
+        self.overlay_title.set_text("Choose portrait" if self.state == "SELECT_P" else "Choose card back")
+        self.overlay_panel.show()
+
+        rects = self._grid_item_rects(m_x + 40, m_y + 90, files, modal_grid, labels=self.state == "SELECT_P")
+        self._ensure_dynamic_ui_count(self.overlay_images, self.overlay_buttons, len(rects), self.overlay_panel, "#menu_image_button")
+        for idx, rect in enumerate(rects):
+            local_rect = rect.move(-overlay_rect.x, -overlay_rect.y)
+            self.overlay_images[idx].set_relative_position((local_rect.x, local_rect.y))
+            self.overlay_images[idx].set_dimensions((local_rect.width, local_rect.height))
+            self.overlay_buttons[idx].set_relative_position((local_rect.x, local_rect.y))
+            self.overlay_buttons[idx].set_dimensions((local_rect.width, local_rect.height))
+            folder = self.portraits_dir if self.state == "SELECT_P" else self.backs_dir
+            self.overlay_images[idx].set_image(self._surface_for_file(folder, files[idx], rect.size))
+            self.overlay_images[idx].show()
+            self.overlay_buttons[idx].show()
+        for idx in range(len(rects), len(self.overlay_images)):
+            self.overlay_images[idx].hide()
+            self.overlay_buttons[idx].hide()
+
+    def sync_ui(self, mouse_pos: tuple[int, int]) -> None:
+        if not self.app.menu_visible:
+            self.root_panel.hide()
+            self.dropdown_panel.hide()
+            self.overlay_panel.hide()
+            return
+        self.root_panel.show()
+        layout = self._sync_main_layout()
+        self._sync_content(layout, mouse_pos)
 
     def draw(self, mouse_pos: tuple[int, int]) -> None:
         self.app.screen.fill(BG_COLOR)
-        self.click_zones = []
-        self.render_main(mouse_pos)
-        if self.state == "SELECT_P":
-            all_portraits = self._scan(self.portraits_dir)
-            self.render_overlay(all_portraits, self.portraits_dir, "CHOOSE PORTRAIT", "set_p", RATIO_SQUARE, mouse_pos)
-        elif self.state == "SELECT_B":
-            all_backs = self._scan(self.backs_dir)
-            self.render_overlay(all_backs, self.backs_dir, "CHOOSE CARD BACK", "set_b", RATIO_CARD, mouse_pos)
+        self.sync_ui(mouse_pos)
 
-    def handle_click(self, pos) -> bool:
-        action = next((act for rect, act in self.click_zones if rect.collidepoint(pos)), None)
-        config_changed = False
-        if self.dropdown_open and action != "toggle_dropdown" and not (action and action.startswith("select_fset_")):
-            self.dropdown_open = False
-        if not action:
-            if self.state != "MAIN":
-                self.state = "MAIN"
+    def process_event(self, event: pygame.event.Event) -> bool:
+        if event.type != pygame_gui.UI_BUTTON_PRESSED:
+            return False
+
+        ui = event.ui_element
+
+        if ui == self.start_button:
+            self.app.start_match()
+            return True
+        if ui == self.exit_button:
+            self.app.request_quit = True
             return True
 
-        if action == "accept_config":
-            self.app.start_match()
-        elif action == "exit_app":
-            return False
-        elif action == "anim_prev":
+        if ui == self.anim_prev:
             modes = ["slow", "normal", "fast"]
             idx = modes.index(self.app.selected_animation_speed)
             self.app.selected_animation_speed = modes[(idx - 1) % len(modes)]
-            config_changed = True
-        elif action == "anim_next":
+            self.app.save_persistent_config()
+            return True
+        if ui == self.anim_next:
             modes = ["slow", "normal", "fast"]
             idx = modes.index(self.app.selected_animation_speed)
             self.app.selected_animation_speed = modes[(idx + 1) % len(modes)]
-            config_changed = True
-        elif action == "mode_prev":
+            self.app.save_persistent_config()
+            return True
+        if ui == self.loss_minus:
+            self.app.selected_losses_to_finish = max(1, self.app.selected_losses_to_finish - 1)
+            self.app.save_persistent_config()
+            return True
+        if ui == self.loss_plus:
+            self.app.selected_losses_to_finish = min(6, self.app.selected_losses_to_finish + 1)
+            self.app.save_persistent_config()
+            return True
+        if ui == self.mode_prev:
             modes = ["classic", "player", "random"]
             idx = modes.index(self.app.selected_opening_mode)
             self.app.selected_opening_mode = modes[(idx - 1) % len(modes)]
-            config_changed = True
-        elif action == "mode_next":
+            self.app.save_persistent_config()
+            return True
+        if ui == self.mode_next:
             modes = ["classic", "player", "random"]
             idx = modes.index(self.app.selected_opening_mode)
             self.app.selected_opening_mode = modes[(idx + 1) % len(modes)]
-            config_changed = True
-        elif action == "loss_minus":
-            self.app.selected_losses_to_finish = max(1, self.app.selected_losses_to_finish - 1)
-            config_changed = True
-        elif action == "loss_plus":
-            self.app.selected_losses_to_finish = min(6, self.app.selected_losses_to_finish + 1)
-            config_changed = True
-        elif action == "toggle_dropdown":
+            self.app.save_persistent_config()
+            return True
+        if ui == self.face_set_button:
             self.dropdown_open = not self.dropdown_open
-        elif action.startswith("select_fset_"):
-            idx = int(action.split("_")[-1])
-            face_sets = self._scan_dirs(self.faces_base_dir)
-            if idx < len(face_sets):
-                selected_dir = face_sets[idx]
+            return True
+        if ui == self.back_button:
+            self.state = "SELECT_B"
+            self.dropdown_open = False
+            return True
+
+        for idx, button in enumerate(self.portrait_buttons):
+            if ui == button:
+                self.editing_idx = idx
+                self.state = "SELECT_P"
+                self.dropdown_open = False
+                return True
+
+        for idx, button in enumerate(self.dropdown_buttons):
+            if ui == button and idx < len(self._scan_dirs(self.faces_base_dir)):
+                selected_dir = self._scan_dirs(self.faces_base_dir)[idx]
                 self.app.current_fronts_dir = os.path.join(self.faces_base_dir, selected_dir)
                 selected_option = next(
-                    (
-                        option["id"]
-                        for option in CARD_FACE_OPTIONS
-                        if os.path.basename(option["path"]) == selected_dir
-                    ),
+                    (option["id"] for option in CARD_FACE_OPTIONS if os.path.basename(option["path"]) == selected_dir),
                     "default",
                 )
                 self.app.selected_card_faces = selected_option
                 self.app.card_front_cache.clear()
-                config_changed = True
-            self.dropdown_open = False
-        elif action.startswith("edit_p_"):
-            self.editing_idx = int(action.split("_")[-1])
-            self.state = "SELECT_P"
-            self.dropdown_open = False
-        elif action.startswith("edit_b_"):
-            self.state = "SELECT_B"
-            self.dropdown_open = False
-        elif action.startswith("set_p_"):
-            portraits = self._scan(self.portraits_dir)
-            idx = int(action.split("_")[-1])
-            if idx < len(portraits):
-                seat = ["left", "top", "right", "bottom"][self.editing_idx]
-                self.app.selected_portrait_files[seat] = portraits[idx]
-                self.app.load_visual_assets()
-                config_changed = True
-            self.state = "MAIN"
-        elif action.startswith("set_b_"):
-            backs = self._scan(self.backs_dir)
-            idx = int(action.split("_")[-1])
-            if idx < len(backs):
-                self.app.custom_back_file = backs[idx]
-                self.app.selected_card_back = "default"
-                self.app.load_visual_assets()
-                config_changed = True
-            self.state = "MAIN"
-        if config_changed:
-            self.app.save_persistent_config()
-        return True
+                self.app.save_persistent_config()
+                self.dropdown_open = False
+                return True
+
+        for idx, button in enumerate(self.overlay_buttons):
+            if ui != button:
+                continue
+            if self.state == "SELECT_P":
+                portraits = self._scan(self.portraits_dir)
+                if idx < len(portraits):
+                    seat = ["left", "top", "right", "bottom"][self.editing_idx]
+                    self.app.selected_portrait_files[seat] = portraits[idx]
+                    self.app.load_visual_assets()
+                    self.app.save_persistent_config()
+                self.state = "MAIN"
+                return True
+            if self.state == "SELECT_B":
+                backs = self._scan(self.backs_dir)
+                if idx < len(backs):
+                    self.app.custom_back_file = backs[idx]
+                    self.app.selected_card_back = "default"
+                    self.app.load_visual_assets()
+                    self.app.save_persistent_config()
+                self.state = "MAIN"
+                return True
+
+        return False

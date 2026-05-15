@@ -1,140 +1,171 @@
-# Current Project Architecture
+# Текущая архитектура проекта
 
-This document gives a short overview of the current architecture of the project.
+Этот документ даёт краткую справку по текущей архитектуре проекта `Durak` и помогает быстро восстановить картину после паузы в работе.
 
-## 1. Entry Point
+## 1. Точка входа
 
 - [main.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/main.py)
 
-`main.py` is intentionally small. It only creates `DurakApp` and starts the main loop.
+Файл намеренно оставлен минимальным. Он только создаёт экземпляр `DurakApp` и запускает главный цикл приложения.
 
-## 2. Main Layers
+## 2. Основные слои проекта
 
-The project is currently split into three main layers:
+Сейчас проект разделён на три основных слоя:
 
-1. `card_engine` - game rules and domain logic
-2. `durak_app` - application layer, rendering, UI, configuration
-3. `tools` - development utilities
+1. `card_engine` — игровые правила и доменная логика.
+2. `durak_app` — слой приложения, рендер, GUI, конфигурация и связка с игровым ядром.
+3. `tools` — вспомогательные инструменты разработки.
 
-## 3. Game Logic Layer: `card_engine`
+## 3. Игровое ядро: `card_engine`
 
 - [card_engine/cards.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/card_engine/cards.py)  
-  Card models, suits, ranks, and standard playing card structures.
+  Описывает карты, масти, достоинства и базовую модель стандартной игральной карты.
 
 - [card_engine/hand.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/card_engine/hand.py)  
-  Player hand container and operations on cards in hand.
+  Хранит руку игрока и базовые операции с картами в руке.
 
 - [card_engine/deck.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/card_engine/deck.py)  
-  Live deck object: shuffle, draw, deal, discard, refill.
+  Реализует живую колоду: перемешивание, добор, раздачу, сброс и повторное использование сброса.
 
 - [card_engine/factories.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/card_engine/factories.py)  
-  Factories for standard decks, including the 36-card deck used by Durak.
+  Содержит фабрики стандартных колод. Для текущей реализации дурака используется 36-карточная колода.
 
 - [card_engine/durak_state.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/card_engine/durak_state.py)  
-  Core Durak rules. This is the main gameplay state machine:
-  - new game creation
-  - trump setup
-  - attack / defend / toss phases
-  - bot auto-steps
-  - draw logic
-  - game over detection
+  Главный state machine игры. Отвечает за:
+  - создание новой партии;
+  - выбор козыря;
+  - фазы `attack / defend / toss / toss_after_take / game_over`;
+  - правила отбоя и подкидывания;
+  - добор карт;
+  - автоходы ботов;
+  - определение проигравшего (`durak`);
+  - служебные данные для анимаций, например `recent_deck_draws`.
 
-## 4. Application Layer: `durak_app`
+## 4. Слой приложения: `durak_app`
 
 - [durak_app/app.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/app.py)  
-  Main application controller. It connects game logic, rendering, animation, UI, and persistent configuration.
+  Главный контроллер приложения. Связывает игровую логику, рендер, анимации, постоянную конфигурацию, меню, GUI и модальные окна.
 
 - [durak_app/config.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/config.py)  
-  Shared constants plus persistent app configuration support through `AppConfig`.
+  Хранит общие константы интерфейса и реализует `AppConfig`, который работает с `app_config.json`.
 
 - [durak_app/game_table.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/game_table.py)  
-  Pure game-table rendering:
-  - felt/table background
-  - player zones
-  - cards on table
-  - deck and trump card
-  - layout block definitions for debug tooling
+  Отвечает за отрисовку игрового стола на чистом `pygame`:
+  - фон и сукно;
+  - зоны игроков;
+  - колоду и козырь;
+  - карты на столе;
+  - руку игрока;
+  - layout-блоки для отладочной утилиты.
 
 - [durak_app/menu.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/menu.py)  
-  Main menu screen. Handles match setup and visual customization.
+  Экран главного меню. Сохраняет текущий визуальный стиль проекта, но интерактивность меню уже переведена на `pygame_gui`.
+  Отвечает за:
+  - параметры матча;
+  - выбор рубашек карт;
+  - выбор набора лиц карт;
+  - выбор портретов;
+  - overlay-режимы настройки.
 
 - [durak_app/menu_support.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/menu_support.py)  
-  Helper classes for menu rendering, including asset loading and square-grid layout support.
+  Вспомогательные классы для меню. Здесь находятся загрузка ассетов и работа с сетками предпросмотра.
 
 - [durak_app/gui_layer.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/gui_layer.py)  
-  Central `pygame_gui` integration layer:
-  - owns `UIManager`
-  - handles action buttons
-  - updates GUI visibility and enabled states
-  - routes GUI button events back into `DurakApp`
+  Центральный слой интеграции `pygame_gui`. Отвечает за:
+  - `UIManager`;
+  - панель `Actions`;
+  - интерактивные кнопки игрового интерфейса;
+  - обновление видимости и доступности GUI-элементов;
+  - маршрутизацию GUI-событий обратно в `DurakApp`;
+  - подключение модальных окон.
 
 - [durak_app/modals.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/modals.py)  
-  Modal builder for `pygame_gui`. It assembles intro and endgame windows from panels, labels, and buttons.
+  Сборщик модальных окон на `pygame_gui`. Здесь больше нет ручной отрисовки модалок через `pygame.draw`.  
+  Модуль собирает:
+  - стартовое модальное окно;
+  - финальное модальное окно;
+  - панели, подписи, статистику и кнопки.
 
 - [durak_app/ui.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/ui.py)  
-  Low-level UI helpers that are still used, mainly card animation.
+  Низкоуровневые UI-утилиты старого слоя. На текущем этапе здесь особенно важна анимация карт.
 
-## 5. Persistent Configuration
+## 5. Текущая модель GUI
+
+На данном этапе проект использует смешанную, но уже стабилизированную модель интерфейса:
+
+- `pygame` отвечает за:
+  - игровой стол;
+  - карты;
+  - анимации карт;
+  - декоративную часть меню.
+
+- `pygame_gui` отвечает за:
+  - все интерактивные GUI-элементы;
+  - панель `Actions`;
+  - кнопки модальных окон;
+  - интерактивность главного меню;
+  - общую систему GUI-событий.
+
+Это означает, что интерактивные элементы проекта приведены к одной системе обработки событий, даже если часть визуальной отрисовки ещё остаётся на чистом `pygame`.
+
+## 6. Постоянная конфигурация
 
 - [app_config.json](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/app_config.json)
 
-Persistent app configuration is separated from temporary in-game state.
+`app_config.json` хранит постоянную конфигурацию приложения, которая не относится к состоянию конкретной игровой партии.
 
-It currently stores:
+Сейчас в нём хранятся:
 
-- visual settings
-- default match settings
-- layout deltas for editable UI blocks
+- визуальные настройки;
+- параметры матча по умолчанию;
+- layout-дельты для редактируемых UI-блоков.
 
-This file is the foundation for layout tooling and future editor-style utilities.
+Этот файл является основой для отладочных layout-инструментов и будущей автоматизации настройки интерфейса.
 
-## 6. GUI Theme
+## 7. Тема `pygame_gui`
 
 - [ui_theme/theme.json](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/ui_theme/theme.json)
 
-This file defines the `pygame_gui` visual theme:
+Файл темы определяет внешний вид элементов `pygame_gui`:
 
-- panel styling
-- modal styling
-- button styling
-- label styling
+- панелей;
+- кнопок;
+- текстовых элементов;
+- модальных окон;
+- невидимых hotspot-кнопок, которые используются для интерактивности меню.
 
-## 7. Development Tools
+## 8. Инструменты разработки
 
 - [tools/layout_debug_tool.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/tools/layout_debug_tool.py)  
-  Standalone utility for moving base UI blocks by editing layout deltas in `app_config.json`.
+  Отдельная графическая утилита для настройки layout-блоков через изменение `delta_x` и `delta_y` в `app_config.json`.
 
-- `tools/card_image_resize_tool`  
-  Image resizing utility for card assets.
+- [tools/card_image_resize_tool](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/tools/card_image_resize_tool)  
+  Утилиты для подготовки и изменения размеров карточных изображений.
 
-- `tools/frame_tool`  
-  Asset generation helpers for card frames and deck production workflows.
+- [tools/frame_tool](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/tools/frame_tool)  
+  Вспомогательные инструменты для генерации карточных рамок и подготовки ассетов колод.
 
-## 8. Current UI Architecture
+## 9. Распределение ответственности
 
-The UI is currently in a hybrid but stabilizing state:
+На текущем этапе целевая ответственность модулей выглядит так:
 
-- game table and cards are rendered with raw `pygame`
-- interactive GUI elements are moving into `pygame_gui`
-- modals are now assembled as `pygame_gui` components
+- `card_engine` владеет правилами игры;
+- `game_table.py` владеет отрисовкой игрового стола;
+- `menu.py` владеет экраном меню;
+- `modals.py` владеет сборкой модальных окон;
+- `gui_layer.py` владеет жизненным циклом `pygame_gui` и обработкой GUI-событий;
+- `app.py` владеет переходами состояний и общей оркестрацией приложения.
 
-Target direction:
+## 10. Рекомендуемый порядок чтения проекта
 
-- `card_engine` owns rules
-- `game_table.py` owns table rendering
-- `menu.py` owns menu rendering
-- `modals.py` owns modal construction
-- `gui_layer.py` owns GUI lifecycle and event routing
-- `app.py` owns state transitions and orchestration
-
-## 9. Recommended Reading Order
-
-If you need to re-enter the project quickly, read files in this order:
+Если нужно быстро снова войти в кодовую базу, лучше читать файлы в таком порядке:
 
 1. [main.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/main.py)
 2. [durak_app/app.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/app.py)
 3. [card_engine/durak_state.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/card_engine/durak_state.py)
 4. [durak_app/game_table.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/game_table.py)
-5. [durak_app/menu.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/menu.py)
-6. [durak_app/config.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/config.py)
-7. [tools/layout_debug_tool.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/tools/layout_debug_tool.py)
+5. [durak_app/gui_layer.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/gui_layer.py)
+6. [durak_app/menu.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/menu.py)
+7. [durak_app/modals.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/modals.py)
+8. [durak_app/config.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/durak_app/config.py)
+9. [tools/layout_debug_tool.py](C:/Users/Zver/Documents/Codex/2026-04-26/pygame-python/tools/layout_debug_tool.py)

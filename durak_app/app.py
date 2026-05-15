@@ -86,8 +86,8 @@ class DurakApp:
         self.request_quit = False
 
         self.table_screen = GameTableScreen(self)
-        self.menu_screen = MainMenuScreen(self)
         self.ui_controller = GameUIController(self)
+        self.menu_screen = MainMenuScreen(self)
         self.modal_renderer = ModalRenderer(self, self.ui_controller.manager)
         self.ui_controller.attach_modals(self.modal_renderer)
         self.app_config.sync_layout_schema(
@@ -541,14 +541,14 @@ class DurakApp:
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame_gui.UI_BUTTON_PRESSED:
+                    if self.menu_visible and self.menu_screen.process_event(event):
+                        continue
                     if self.ui_controller.process_event(event):
                         continue
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_r and not self.menu_visible:
                     self.reset_game()
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if self.menu_visible:
-                        running = self.menu_screen.handle_click(event.pos)
-                    elif not self.ui_controller.point_over_ui(event.pos):
+                    if not self.menu_visible and not self.ui_controller.point_over_ui(event.pos):
                         self.handle_player_card_click(event.pos)
 
             if self.request_quit:
@@ -574,6 +574,8 @@ class DurakApp:
 
             if self.menu_visible:
                 self.menu_screen.draw(mouse_pos)
+            else:
+                self.menu_screen.sync_ui(mouse_pos)
             self.ui_controller.draw(self.screen)
             pygame.display.flip()
         pygame.quit()
