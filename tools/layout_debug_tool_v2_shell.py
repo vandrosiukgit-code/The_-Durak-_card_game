@@ -5,7 +5,16 @@ from pathlib import Path
 
 import pygame
 import pygame_gui
-from pygame_gui.elements import UIButton, UIDropDownMenu, UILabel, UIPanel, UITextBox, UITextEntryLine
+from pygame_gui.elements import (
+    UIButton,
+    UIDropDownMenu,
+    UIHorizontalScrollBar,
+    UILabel,
+    UIPanel,
+    UITextBox,
+    UITextEntryLine,
+    UIVerticalScrollBar,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -49,20 +58,6 @@ def draw_sunken_rect(surface: pygame.Surface, rect: pygame.Rect, fill: pygame.Co
     pygame.draw.line(surface, WIN95_LIGHT, rect.topright, rect.bottomright)
 
 
-def draw_sunken_frame(surface: pygame.Surface, rect: pygame.Rect) -> None:
-    pygame.draw.line(surface, WIN95_DARKER, rect.topleft, rect.topright)
-    pygame.draw.line(surface, WIN95_DARKER, rect.topleft, rect.bottomleft)
-    pygame.draw.line(surface, WIN95_LIGHT, rect.bottomleft, rect.bottomright)
-    pygame.draw.line(surface, WIN95_LIGHT, rect.topright, rect.bottomright)
-
-
-def draw_raised_frame(surface: pygame.Surface, rect: pygame.Rect) -> None:
-    pygame.draw.line(surface, WIN95_LIGHT, rect.topleft, rect.topright)
-    pygame.draw.line(surface, WIN95_LIGHT, rect.topleft, rect.bottomleft)
-    pygame.draw.line(surface, WIN95_DARKER, rect.bottomleft, rect.bottomright)
-    pygame.draw.line(surface, WIN95_DARKER, rect.topright, rect.bottomright)
-
-
 class LayoutDebugToolV2Shell:
     def __init__(self) -> None:
         pygame.init()
@@ -78,7 +73,6 @@ class LayoutDebugToolV2Shell:
         self.show_hitboxes = False
         self.hover_object = "game_table.players.left.panel"
         self.selected_object = "game_table.players.left.name"
-        self.inspector_group_frames: list[pygame.Rect] = []
 
         self._build_ui()
 
@@ -189,6 +183,20 @@ class LayoutDebugToolV2Shell:
             container=self.navigator_panel,
             object_id="#win95_textbox",
         )
+        self.navigator_vertical_scrollbar = UIVerticalScrollBar(
+            relative_rect=pygame.Rect(NAVIGATOR_RECT.width - 26, 34, 16, NAVIGATOR_RECT.height - 66),
+            visible_percentage=0.72,
+            manager=self.manager,
+            container=self.navigator_panel,
+            object_id="#win95_scrollbar",
+        )
+        self.navigator_horizontal_scrollbar = UIHorizontalScrollBar(
+            relative_rect=pygame.Rect(10, NAVIGATOR_RECT.height - 24, NAVIGATOR_RECT.width - 42, 16),
+            visible_percentage=0.72,
+            manager=self.manager,
+            container=self.navigator_panel,
+            object_id="#win95_scrollbar",
+        )
 
         self.inspector_panel = UIPanel(
             relative_rect=INSPECTOR_RECT,
@@ -242,7 +250,6 @@ class LayoutDebugToolV2Shell:
         )
 
     def _build_inspector(self) -> None:
-        self.inspector_group_frames.clear()
         UILabel(
             pygame.Rect(INSPECTOR_CONTENT_X, 34, 170, 22),
             "Object: player_left_panel",
@@ -306,7 +313,6 @@ class LayoutDebugToolV2Shell:
             container=self.inspector_panel,
             object_id="#win95_sunken_panel",
         )
-        self.inspector_group_frames.append(pygame.Rect(INSPECTOR_GROUP_X, y, INSPECTOR_GROUP_WIDTH, height))
         UILabel(
             pygame.Rect(8, 6, 140, 16),
             title,
@@ -343,7 +349,6 @@ class LayoutDebugToolV2Shell:
             container=self.inspector_panel,
             object_id="#win95_sunken_panel",
         )
-        self.inspector_group_frames.append(pygame.Rect(INSPECTOR_GROUP_X, y, INSPECTOR_GROUP_WIDTH, INSPECTOR_CONTROL_HEIGHT))
         UILabel(pygame.Rect(8, 8, 120, 16), "CONTROL", self.manager, container=panel, object_id="#win95_label")
         UILabel(pygame.Rect(8, 32, 42, 16), "Step:", self.manager, container=panel, object_id="#win95_label")
         UITextEntryLine(
@@ -399,6 +404,13 @@ class LayoutDebugToolV2Shell:
             container=existing_panel,
             object_id="#win95_textbox",
         )
+        self.todo_list_horizontal_scrollbar = UIHorizontalScrollBar(
+            relative_rect=pygame.Rect(8, 196, 286, 16),
+            visible_percentage=0.72,
+            manager=self.manager,
+            container=existing_panel,
+            object_id="#win95_scrollbar",
+        )
         UILabel(
             pygame.Rect(330, 12, 386, 18),
             "ВЫБРАННАЯ ЗАДАЧА",
@@ -415,7 +427,7 @@ class LayoutDebugToolV2Shell:
         )
         for idx, text in enumerate(["Edit", "Copy"]):
             UIButton(
-                pygame.Rect(407 + idx * 124, 202, 112, 24),
+                pygame.Rect(407 + idx * 124, 204, 112, 22),
                 text,
                 self.manager,
                 container=existing_panel,
@@ -509,85 +521,6 @@ class LayoutDebugToolV2Shell:
         self.window.blit(hover, (hover_rect.x, hover_rect.y - 20))
         self.window.blit(selected, (selected_rect.x, selected_rect.y - 20))
 
-    def _draw_inspector_group_frames(self) -> None:
-        inspector_rect = self.inspector_panel.get_abs_rect()
-        for rect in self.inspector_group_frames:
-            draw_sunken_frame(self.window, rect.move(inspector_rect.topleft))
-
-    def _draw_navigator_scrollbars(self) -> None:
-        body_rect = self.navigator_body.get_abs_rect()
-        self._draw_win95_scrollbars_for_rect(body_rect)
-
-    def _draw_todo_list_scrollbars(self) -> None:
-        body_rect = self.todo_list.get_abs_rect()
-        self._draw_win95_embedded_scrollbars_for_rect(body_rect)
-
-    def _draw_win95_scrollbars_for_rect(self, body_rect: pygame.Rect) -> None:
-        vertical_rect = pygame.Rect(body_rect.right, body_rect.y, 16, body_rect.height)
-        horizontal_rect = pygame.Rect(body_rect.x, body_rect.bottom, body_rect.width, 16)
-        corner_rect = pygame.Rect(vertical_rect.x, horizontal_rect.y, 16, 16)
-
-        for rect in [vertical_rect, horizontal_rect, corner_rect]:
-            pygame.draw.rect(self.window, WIN95_FACE, rect)
-            draw_sunken_frame(self.window, rect)
-
-        up_button = pygame.Rect(vertical_rect.x + 1, vertical_rect.y + 1, 14, 16)
-        down_button = pygame.Rect(vertical_rect.x + 1, vertical_rect.bottom - 17, 14, 16)
-        v_thumb = pygame.Rect(vertical_rect.x + 2, vertical_rect.y + 42, 12, 72)
-        left_button = pygame.Rect(horizontal_rect.x + 1, horizontal_rect.y + 1, 16, 14)
-        right_button = pygame.Rect(horizontal_rect.right - 17, horizontal_rect.y + 1, 16, 14)
-        h_thumb = pygame.Rect(horizontal_rect.x + 48, horizontal_rect.y + 2, 84, 12)
-
-        for rect in [up_button, down_button, v_thumb, left_button, right_button, h_thumb]:
-            pygame.draw.rect(self.window, WIN95_FACE, rect)
-            draw_raised_frame(self.window, rect)
-
-        self.window.blit(self.small_font.render("^", True, pygame.Color(0, 0, 0)), (up_button.x + 3, up_button.y - 1))
-        self.window.blit(self.small_font.render("v", True, pygame.Color(0, 0, 0)), (down_button.x + 3, down_button.y - 1))
-        self.window.blit(self.small_font.render("<", True, pygame.Color(0, 0, 0)), (left_button.x + 4, left_button.y - 2))
-        self.window.blit(self.small_font.render(">", True, pygame.Color(0, 0, 0)), (right_button.x + 4, right_button.y - 2))
-
-    def _draw_win95_horizontal_scrollbar_for_rect(self, body_rect: pygame.Rect) -> None:
-        horizontal_rect = pygame.Rect(body_rect.x, body_rect.bottom, body_rect.width, 16)
-        pygame.draw.rect(self.window, WIN95_FACE, horizontal_rect)
-        draw_sunken_frame(self.window, horizontal_rect)
-
-        left_button = pygame.Rect(horizontal_rect.x + 1, horizontal_rect.y + 1, 16, 14)
-        right_button = pygame.Rect(horizontal_rect.right - 17, horizontal_rect.y + 1, 16, 14)
-        h_thumb = pygame.Rect(horizontal_rect.x + 48, horizontal_rect.y + 2, 84, 12)
-
-        for rect in [left_button, right_button, h_thumb]:
-            pygame.draw.rect(self.window, WIN95_FACE, rect)
-            draw_raised_frame(self.window, rect)
-
-        self.window.blit(self.small_font.render("<", True, pygame.Color(0, 0, 0)), (left_button.x + 4, left_button.y - 2))
-        self.window.blit(self.small_font.render(">", True, pygame.Color(0, 0, 0)), (right_button.x + 4, right_button.y - 2))
-
-    def _draw_win95_embedded_scrollbars_for_rect(self, body_rect: pygame.Rect) -> None:
-        vertical_rect = pygame.Rect(body_rect.right - 16, body_rect.y, 16, body_rect.height)
-        horizontal_rect = pygame.Rect(body_rect.x, body_rect.bottom, body_rect.width, 16)
-        corner_rect = pygame.Rect(vertical_rect.x, horizontal_rect.y, 16, 16)
-
-        for rect in [vertical_rect, horizontal_rect, corner_rect]:
-            pygame.draw.rect(self.window, WIN95_FACE, rect)
-            draw_sunken_frame(self.window, rect)
-
-        up_button = pygame.Rect(vertical_rect.x + 1, vertical_rect.y + 1, 14, 16)
-        down_button = pygame.Rect(vertical_rect.x + 1, vertical_rect.bottom - 17, 14, 16)
-        v_thumb = pygame.Rect(vertical_rect.x + 2, vertical_rect.y + 42, 12, 72)
-        left_button = pygame.Rect(horizontal_rect.x + 1, horizontal_rect.y + 1, 16, 14)
-        right_button = pygame.Rect(horizontal_rect.right - 17, horizontal_rect.y + 1, 16, 14)
-        h_thumb = pygame.Rect(horizontal_rect.x + 48, horizontal_rect.y + 2, 84, 12)
-
-        for rect in [up_button, down_button, v_thumb, left_button, right_button, h_thumb]:
-            pygame.draw.rect(self.window, WIN95_FACE, rect)
-            draw_raised_frame(self.window, rect)
-
-        self.window.blit(self.small_font.render("^", True, pygame.Color(0, 0, 0)), (up_button.x + 3, up_button.y - 1))
-        self.window.blit(self.small_font.render("v", True, pygame.Color(0, 0, 0)), (down_button.x + 3, down_button.y - 1))
-        self.window.blit(self.small_font.render("<", True, pygame.Color(0, 0, 0)), (left_button.x + 4, left_button.y - 2))
-        self.window.blit(self.small_font.render(">", True, pygame.Color(0, 0, 0)), (right_button.x + 4, right_button.y - 2))
-
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT:
             self.running = False
@@ -616,9 +549,6 @@ class LayoutDebugToolV2Shell:
             self.manager.update(time_delta)
             self._draw_background()
             self.manager.draw_ui(self.window)
-            self._draw_inspector_group_frames()
-            self._draw_navigator_scrollbars()
-            self._draw_todo_list_scrollbars()
             self._draw_preview_placeholder()
 
             pygame.display.flip()
