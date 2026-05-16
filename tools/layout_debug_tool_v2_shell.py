@@ -18,18 +18,18 @@ WINDOW_SIZE = (1600, 1000)
 GAME_CANVAS_SIZE = (1600, 900)
 
 CONTEXT_RECT = pygame.Rect(12, 8, 1576, 104)
-NAVIGATOR_RECT = pygame.Rect(12, 122, 330, 420)
-INSPECTOR_RECT = pygame.Rect(350, 122, 330, 420)
-PREVIEW_RECT = pygame.Rect(688, 122, 900, 420)
-TODO_RECT = pygame.Rect(12, 552, 1576, 396)
+NAVIGATOR_RECT = pygame.Rect(12, 122, 264, 540)
+INSPECTOR_RECT = pygame.Rect(284, 122, 330, 540)
+PREVIEW_RECT = pygame.Rect(622, 122, 966, 540)
+TODO_RECT = pygame.Rect(12, 672, 1576, 276)
 STATUS_RECT = pygame.Rect(4, WINDOW_SIZE[1] - 28, WINDOW_SIZE[0] - 8, 24)
 
 INSPECTOR_CONTENT_X = 10
 INSPECTOR_GROUP_X = 8
 INSPECTOR_GROUP_WIDTH = 314
-INSPECTOR_ACTION_Y = 384
-INSPECTOR_GROUP_HEIGHT = 54
-INSPECTOR_CONTROL_HEIGHT = 112
+INSPECTOR_ACTION_Y = 506
+INSPECTOR_GROUP_HEIGHT = 78
+INSPECTOR_CONTROL_HEIGHT = 130
 
 WIN95_FACE = pygame.Color(192, 192, 192)
 WIN95_DARK = pygame.Color(128, 128, 128)
@@ -54,6 +54,13 @@ def draw_sunken_frame(surface: pygame.Surface, rect: pygame.Rect) -> None:
     pygame.draw.line(surface, WIN95_DARKER, rect.topleft, rect.bottomleft)
     pygame.draw.line(surface, WIN95_LIGHT, rect.bottomleft, rect.bottomright)
     pygame.draw.line(surface, WIN95_LIGHT, rect.topright, rect.bottomright)
+
+
+def draw_raised_frame(surface: pygame.Surface, rect: pygame.Rect) -> None:
+    pygame.draw.line(surface, WIN95_LIGHT, rect.topleft, rect.topright)
+    pygame.draw.line(surface, WIN95_LIGHT, rect.topleft, rect.bottomleft)
+    pygame.draw.line(surface, WIN95_DARKER, rect.bottomleft, rect.bottomright)
+    pygame.draw.line(surface, WIN95_DARKER, rect.topright, rect.bottomright)
 
 
 class LayoutDebugToolV2Shell:
@@ -132,7 +139,6 @@ class LayoutDebugToolV2Shell:
             ("button", "button"),
             ("helper", "helper"),
             ("changed", "changed"),
-            ("TODO", "TODO"),
         ]:
             button = UIButton(
                 relative_rect=pygame.Rect(x, 68, 112, 24),
@@ -178,7 +184,7 @@ class LayoutDebugToolV2Shell:
                 "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`- loss_label"
                 "</font>"
             ),
-            relative_rect=pygame.Rect(10, 34, 306, 372),
+            relative_rect=pygame.Rect(10, 34, NAVIGATOR_RECT.width - 42, NAVIGATOR_RECT.height - 66),
             manager=self.manager,
             container=self.navigator_panel,
             object_id="#win95_textbox",
@@ -238,52 +244,38 @@ class LayoutDebugToolV2Shell:
     def _build_inspector(self) -> None:
         self.inspector_group_frames.clear()
         UILabel(
-            pygame.Rect(INSPECTOR_CONTENT_X, 34, 150, 20),
-            "Object:",
+            pygame.Rect(INSPECTOR_CONTENT_X, 34, 170, 22),
+            "Object: player_left_panel",
             self.manager,
             container=self.inspector_panel,
-            object_id="#win95_label",
+            object_id="#win95_object_label",
         )
         UILabel(
-            pygame.Rect(82, 34, 286, 20),
-            "player_left_panel",
+            pygame.Rect(INSPECTOR_CONTENT_X, 60, 132, 22),
+            "Type: player_panel",
             self.manager,
             container=self.inspector_panel,
-            object_id="#win95_label",
-        )
-        UILabel(
-            pygame.Rect(INSPECTOR_CONTENT_X, 56, 150, 20),
-            "Type:",
-            self.manager,
-            container=self.inspector_panel,
-            object_id="#win95_label",
-        )
-        UILabel(
-            pygame.Rect(82, 56, 286, 20),
-            "player_panel",
-            self.manager,
-            container=self.inspector_panel,
-            object_id="#win95_label",
+            object_id="#win95_object_label",
         )
         self._inspector_group(
             "GEOMETRY",
-            78,
+            96,
             INSPECTOR_GROUP_HEIGHT,
             [("x", "32"), ("y", "180"), ("width", "170"), ("height", "620")],
         )
         self._inspector_group(
             "LAYOUT DELTAS",
-            136,
+            184,
             INSPECTOR_GROUP_HEIGHT,
             [("delta_x", "0"), ("delta_y", "0"), ("width_delta", "0"), ("height_delta", "0")],
         )
         self._inspector_group(
             "VISUAL",
-            194,
+            272,
             INSPECTOR_GROUP_HEIGHT,
             [("color", "#c0c0c0"), ("font", "Arial"), ("font_size", "14")],
         )
-        self._build_inspector_controls(258)
+        self._build_inspector_controls(360)
 
         UIButton(
             pygame.Rect(10, INSPECTOR_ACTION_Y, 94, 24),
@@ -316,28 +308,28 @@ class LayoutDebugToolV2Shell:
         )
         self.inspector_group_frames.append(pygame.Rect(INSPECTOR_GROUP_X, y, INSPECTOR_GROUP_WIDTH, height))
         UILabel(
-            pygame.Rect(8, 2, 140, 18),
+            pygame.Rect(8, 6, 140, 16),
             title,
             self.manager,
             container=panel,
             object_id="#win95_label",
         )
-        row_y = 20
+        row_y = 28
         for idx, (label, value) in enumerate(fields):
             px = 8 + (idx % 2) * 150
-            py = row_y + (idx // 2) * 18
+            py = row_y + (idx // 2) * 20
             label_width = 86 if len(label) > 6 else 50
             input_x = px + label_width
             input_w = 136 - label_width
             UILabel(
-                pygame.Rect(px, py, label_width - 4, 18),
+                pygame.Rect(px, py, label_width - 4, 16),
                 f"{label}:",
                 self.manager,
                 container=panel,
                 object_id="#win95_small_label",
             )
             UITextEntryLine(
-                relative_rect=pygame.Rect(input_x, py, input_w, 18),
+                relative_rect=pygame.Rect(input_x, py, input_w, 16),
                 manager=self.manager,
                 container=panel,
                 initial_text=value,
@@ -352,29 +344,48 @@ class LayoutDebugToolV2Shell:
             object_id="#win95_sunken_panel",
         )
         self.inspector_group_frames.append(pygame.Rect(INSPECTOR_GROUP_X, y, INSPECTOR_GROUP_WIDTH, INSPECTOR_CONTROL_HEIGHT))
-        UILabel(pygame.Rect(8, 2, 120, 18), "CONTROL", self.manager, container=panel, object_id="#win95_label")
-        UILabel(pygame.Rect(8, 26, 42, 20), "Step:", self.manager, container=panel, object_id="#win95_label")
+        UILabel(pygame.Rect(8, 8, 120, 16), "CONTROL", self.manager, container=panel, object_id="#win95_label")
+        UILabel(pygame.Rect(8, 32, 42, 16), "Step:", self.manager, container=panel, object_id="#win95_label")
         UITextEntryLine(
-            relative_rect=pygame.Rect(56, 24, 58, 22),
+            relative_rect=pygame.Rect(56, 30, 58, 20),
             manager=self.manager,
             container=panel,
             initial_text="10",
             object_id="#win95_input",
         )
 
-        UILabel(pygame.Rect(8, 56, 50, 20), "Move:", self.manager, container=panel, object_id="#win95_label")
+        UILabel(pygame.Rect(8, 62, 50, 16), "Move:", self.manager, container=panel, object_id="#win95_label")
         for idx, text in enumerate(["<-", "^", "v", "->"]):
-            UIButton(pygame.Rect(62 + idx * 42, 52, 36, 24), text, self.manager, container=panel, object_id="#win95_button")
+            UIButton(pygame.Rect(62 + idx * 42, 58, 36, 24), text, self.manager, container=panel, object_id="#win95_button")
 
-        UILabel(pygame.Rect(8, 86, 42, 20), "Size:", self.manager, container=panel, object_id="#win95_label")
+        UILabel(pygame.Rect(8, 96, 42, 16), "Size:", self.manager, container=panel, object_id="#win95_label")
         for idx, text in enumerate(["-W", "+W", "-H", "+H"]):
-            UIButton(pygame.Rect(62 + idx * 42, 82, 36, 24), text, self.manager, container=panel, object_id="#win95_button")
+            UIButton(pygame.Rect(62 + idx * 42, 92, 36, 24), text, self.manager, container=panel, object_id="#win95_button")
 
     def _build_todo(self) -> None:
+        existing_panel = UIPanel(
+            relative_rect=pygame.Rect(8, 34, 760, 232),
+            manager=self.manager,
+            container=self.todo_panel,
+            object_id="#win95_sunken_panel",
+        )
+        new_panel = UIPanel(
+            relative_rect=pygame.Rect(778, 34, 790, 232),
+            manager=self.manager,
+            container=self.todo_panel,
+            object_id="#win95_sunken_panel",
+        )
+
+        UILabel(
+            pygame.Rect(8, 12, 300, 18),
+            "ПРОСМОТР СОЗДАННЫХ ЗАДАЧ",
+            self.manager,
+            container=existing_panel,
+            object_id="#win95_label",
+        )
         self.todo_list = UITextBox(
             html_text=(
                 "<font face=consolas size=3>"
-                "<b>СПИСОК ЗАДАЧ</b><br><br>"
                 "[ ] game_table.player_left_panel<br>"
                 "&nbsp;&nbsp;&nbsp;&nbsp;Поднять выше<br><br>"
                 "[!] game_ui.pass_button<br>"
@@ -383,40 +394,62 @@ class LayoutDebugToolV2Shell:
                 "&nbsp;&nbsp;&nbsp;&nbsp;Уменьшить ширину"
                 "</font>"
             ),
-            relative_rect=pygame.Rect(10, 38, 720, 338),
+            relative_rect=pygame.Rect(8, 36, 286, 160),
             manager=self.manager,
-            container=self.todo_panel,
+            container=existing_panel,
             object_id="#win95_textbox",
         )
         UILabel(
-            pygame.Rect(748, 38, 430, 24),
-            "ЗАДАЧА ВЫБРАННОГО ОБЪЕКТА",
+            pygame.Rect(330, 12, 386, 18),
+            "ВЫБРАННАЯ ЗАДАЧА",
             self.manager,
-            container=self.todo_panel,
-            object_id="#win95_label",
-        )
-        UILabel(
-            pygame.Rect(748, 64, 500, 22),
-            "Object: game_table.player_left_panel",
-            self.manager,
-            container=self.todo_panel,
+            container=existing_panel,
             object_id="#win95_label",
         )
         self.todo_text = UITextBox(
             html_text="Поднять панель выше и выровнять относительно верхней панели игрока.",
-            relative_rect=pygame.Rect(748, 92, 520, 176),
+            relative_rect=pygame.Rect(330, 36, 386, 160),
             manager=self.manager,
-            container=self.todo_panel,
+            container=existing_panel,
             object_id="#win95_textbox",
         )
-        for idx, text in enumerate(["Save TO DO", "Clear TO DO", "Go to obj", "Copy task"]):
+        for idx, text in enumerate(["Edit", "Copy"]):
             UIButton(
-                pygame.Rect(748 + idx * 132, 282, 122, 28),
+                pygame.Rect(407 + idx * 124, 202, 112, 24),
                 text,
                 self.manager,
-                container=self.todo_panel,
+                container=existing_panel,
                 object_id="#win95_button",
             )
+
+        UILabel(
+            pygame.Rect(8, 12, 360, 18),
+            "СОЗДАТЬ НОВУЮ ЗАДАЧУ",
+            self.manager,
+            container=new_panel,
+            object_id="#win95_label",
+        )
+        UITextBox(
+            html_text="Описание новой задачи для выбранного объекта.",
+            relative_rect=pygame.Rect(8, 36, 600, 182),
+            manager=self.manager,
+            container=new_panel,
+            object_id="#win95_textbox",
+        )
+        UIButton(
+            pygame.Rect(628, 78, 128, 30),
+            "Add task",
+            self.manager,
+            container=new_panel,
+            object_id="#win95_button",
+        )
+        UIButton(
+            pygame.Rect(628, 122, 128, 30),
+            "Clean",
+            self.manager,
+            container=new_panel,
+            object_id="#win95_button",
+        )
 
     def _filter_text(self, filter_id: str, label: str) -> str:
         mark = "x" if filter_id in self.selected_filter_types else " "
@@ -481,6 +514,80 @@ class LayoutDebugToolV2Shell:
         for rect in self.inspector_group_frames:
             draw_sunken_frame(self.window, rect.move(inspector_rect.topleft))
 
+    def _draw_navigator_scrollbars(self) -> None:
+        body_rect = self.navigator_body.get_abs_rect()
+        self._draw_win95_scrollbars_for_rect(body_rect)
+
+    def _draw_todo_list_scrollbars(self) -> None:
+        body_rect = self.todo_list.get_abs_rect()
+        self._draw_win95_embedded_scrollbars_for_rect(body_rect)
+
+    def _draw_win95_scrollbars_for_rect(self, body_rect: pygame.Rect) -> None:
+        vertical_rect = pygame.Rect(body_rect.right, body_rect.y, 16, body_rect.height)
+        horizontal_rect = pygame.Rect(body_rect.x, body_rect.bottom, body_rect.width, 16)
+        corner_rect = pygame.Rect(vertical_rect.x, horizontal_rect.y, 16, 16)
+
+        for rect in [vertical_rect, horizontal_rect, corner_rect]:
+            pygame.draw.rect(self.window, WIN95_FACE, rect)
+            draw_sunken_frame(self.window, rect)
+
+        up_button = pygame.Rect(vertical_rect.x + 1, vertical_rect.y + 1, 14, 16)
+        down_button = pygame.Rect(vertical_rect.x + 1, vertical_rect.bottom - 17, 14, 16)
+        v_thumb = pygame.Rect(vertical_rect.x + 2, vertical_rect.y + 42, 12, 72)
+        left_button = pygame.Rect(horizontal_rect.x + 1, horizontal_rect.y + 1, 16, 14)
+        right_button = pygame.Rect(horizontal_rect.right - 17, horizontal_rect.y + 1, 16, 14)
+        h_thumb = pygame.Rect(horizontal_rect.x + 48, horizontal_rect.y + 2, 84, 12)
+
+        for rect in [up_button, down_button, v_thumb, left_button, right_button, h_thumb]:
+            pygame.draw.rect(self.window, WIN95_FACE, rect)
+            draw_raised_frame(self.window, rect)
+
+        self.window.blit(self.small_font.render("^", True, pygame.Color(0, 0, 0)), (up_button.x + 3, up_button.y - 1))
+        self.window.blit(self.small_font.render("v", True, pygame.Color(0, 0, 0)), (down_button.x + 3, down_button.y - 1))
+        self.window.blit(self.small_font.render("<", True, pygame.Color(0, 0, 0)), (left_button.x + 4, left_button.y - 2))
+        self.window.blit(self.small_font.render(">", True, pygame.Color(0, 0, 0)), (right_button.x + 4, right_button.y - 2))
+
+    def _draw_win95_horizontal_scrollbar_for_rect(self, body_rect: pygame.Rect) -> None:
+        horizontal_rect = pygame.Rect(body_rect.x, body_rect.bottom, body_rect.width, 16)
+        pygame.draw.rect(self.window, WIN95_FACE, horizontal_rect)
+        draw_sunken_frame(self.window, horizontal_rect)
+
+        left_button = pygame.Rect(horizontal_rect.x + 1, horizontal_rect.y + 1, 16, 14)
+        right_button = pygame.Rect(horizontal_rect.right - 17, horizontal_rect.y + 1, 16, 14)
+        h_thumb = pygame.Rect(horizontal_rect.x + 48, horizontal_rect.y + 2, 84, 12)
+
+        for rect in [left_button, right_button, h_thumb]:
+            pygame.draw.rect(self.window, WIN95_FACE, rect)
+            draw_raised_frame(self.window, rect)
+
+        self.window.blit(self.small_font.render("<", True, pygame.Color(0, 0, 0)), (left_button.x + 4, left_button.y - 2))
+        self.window.blit(self.small_font.render(">", True, pygame.Color(0, 0, 0)), (right_button.x + 4, right_button.y - 2))
+
+    def _draw_win95_embedded_scrollbars_for_rect(self, body_rect: pygame.Rect) -> None:
+        vertical_rect = pygame.Rect(body_rect.right - 16, body_rect.y, 16, body_rect.height)
+        horizontal_rect = pygame.Rect(body_rect.x, body_rect.bottom, body_rect.width, 16)
+        corner_rect = pygame.Rect(vertical_rect.x, horizontal_rect.y, 16, 16)
+
+        for rect in [vertical_rect, horizontal_rect, corner_rect]:
+            pygame.draw.rect(self.window, WIN95_FACE, rect)
+            draw_sunken_frame(self.window, rect)
+
+        up_button = pygame.Rect(vertical_rect.x + 1, vertical_rect.y + 1, 14, 16)
+        down_button = pygame.Rect(vertical_rect.x + 1, vertical_rect.bottom - 17, 14, 16)
+        v_thumb = pygame.Rect(vertical_rect.x + 2, vertical_rect.y + 42, 12, 72)
+        left_button = pygame.Rect(horizontal_rect.x + 1, horizontal_rect.y + 1, 16, 14)
+        right_button = pygame.Rect(horizontal_rect.right - 17, horizontal_rect.y + 1, 16, 14)
+        h_thumb = pygame.Rect(horizontal_rect.x + 48, horizontal_rect.y + 2, 84, 12)
+
+        for rect in [up_button, down_button, v_thumb, left_button, right_button, h_thumb]:
+            pygame.draw.rect(self.window, WIN95_FACE, rect)
+            draw_raised_frame(self.window, rect)
+
+        self.window.blit(self.small_font.render("^", True, pygame.Color(0, 0, 0)), (up_button.x + 3, up_button.y - 1))
+        self.window.blit(self.small_font.render("v", True, pygame.Color(0, 0, 0)), (down_button.x + 3, down_button.y - 1))
+        self.window.blit(self.small_font.render("<", True, pygame.Color(0, 0, 0)), (left_button.x + 4, left_button.y - 2))
+        self.window.blit(self.small_font.render(">", True, pygame.Color(0, 0, 0)), (right_button.x + 4, right_button.y - 2))
+
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT:
             self.running = False
@@ -510,6 +617,8 @@ class LayoutDebugToolV2Shell:
             self._draw_background()
             self.manager.draw_ui(self.window)
             self._draw_inspector_group_frames()
+            self._draw_navigator_scrollbars()
+            self._draw_todo_list_scrollbars()
             self._draw_preview_placeholder()
 
             pygame.display.flip()

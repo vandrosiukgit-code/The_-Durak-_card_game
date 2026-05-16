@@ -85,6 +85,15 @@
       "normal_text": "#000000"
     }
   },
+  "#win95_object_label": {
+    "font": {
+      "name": "arial",
+      "size": "16"
+    },
+    "colours": {
+      "normal_text": "#000000"
+    }
+  },
   "#win95_button": {
     "font": {
       "name": "arial",
