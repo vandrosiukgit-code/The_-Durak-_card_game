@@ -9,16 +9,20 @@ from pathlib import Path
 
 import pygame
 import pygame_gui
+import pygame.scrap
 from pygame_gui.elements import (
     UIButton,
     UIDropDownMenu,
     UILabel,
     UIPanel,
+    UISelectionList,
     UITextBox,
+    UITextEntryBox,
     UITextEntryLine,
 )
 
 UI_TEXT_ENTRY_FINISHED = getattr(pygame_gui, "UI_TEXT_ENTRY_FINISHED", None)
+UI_SELECTION_LIST_NEW_SELECTION = getattr(pygame_gui, "UI_SELECTION_LIST_NEW_SELECTION", None)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -87,6 +91,12 @@ def safe_int(value: object, fallback: int = 0) -> int:
 
 def safe_str(value: object, fallback: str = "") -> str:
     return value if isinstance(value, str) else fallback
+
+
+def clipboard_text_bytes(text: str) -> bytes:
+    if sys.platform == "win32":
+        return text.encode("mbcs", errors="replace")
+    return text.encode("utf-8")
 
 
 @dataclass(frozen=True)
@@ -234,6 +244,9 @@ class LayoutDebugToolV2Shell:
         self.control_buttons: dict[UIButton, tuple[int, int, int, int]] = {}
         self.step_field: UITextEntryLine | None = None
         self.selected_object_snapshot: dict | None = self._copy_selected_layout_entry()
+        self.selected_todo_path: str | None = None
+        self.todo_paths_by_label: dict[str, str] = {}
+        self.new_todo_entry_active = False
 
         self._build_ui()
 
@@ -256,6 +269,34 @@ class LayoutDebugToolV2Shell:
         if hasattr(self, "status_bar_label"):
             self.status_bar_label.set_text(self.layout_summary)
 
+    def _set_status_message(self, message: str) -> None:
+        if hasattr(self, "status_bar_label"):
+            self.status_bar_label.set_text(message)
+
+    def _atomic_write_config(self, data: dict) -> None:
+        temp_path = APP_CONFIG_PATH.with_suffix(APP_CONFIG_PATH.suffix + ".tmp")
+        config_text = json.dumps(data, ensure_ascii=False, indent=2)
+        temp_path.write_text(config_text + "\n", encoding="utf-8")
+        temp_path.replace(APP_CONFIG_PATH)
+
+    def _apply_session_to_config(self) -> None:
+        if self.layout_data.load_error:
+            self._set_status_message(f"Apply failed: {self.layout_data.load_error}")
+            return
+
+        config_data = copy.deepcopy(self.layout_data.data)
+        config_data["layout"] = copy.deepcopy(self.layout_data.layout)
+        try:
+            self._atomic_write_config(config_data)
+        except OSError as exc:
+            self._set_status_message(f"Apply failed: {type(exc).__name__}: {exc}")
+            return
+
+        self.layout_data.data = config_data
+        self.initial_layout = copy.deepcopy(self.layout_data.layout)
+        self.selected_object_snapshot = self._copy_selected_layout_entry()
+        self._update_session_status()
+
     def set_current_screen(self, screen_id: str) -> None:
         if screen_id not in SUPPORTED_SCREEN_IDS:
             return
@@ -267,6 +308,8 @@ class LayoutDebugToolV2Shell:
         self.preview_rects = self._build_preview_rects()
         self.navigator_body.set_text(self._navigator_html())
         self._update_inspector()
+        self._sync_selected_todo_with_object()
+        self._update_todo_view()
         self._update_session_status()
 
     def _navigator_html(self) -> str:
@@ -356,7 +399,166 @@ class LayoutDebugToolV2Shell:
         self.preview_rects = self._build_preview_rects()
         self.navigator_body.set_text(self._navigator_html())
         self._update_inspector()
+        self._sync_selected_todo_with_object()
+        self._update_todo_view()
         self._update_session_status()
+
+    def _todo_items(self) -> list[LayoutObject]:
+        items: list[LayoutObject] = []
+        for screen_id in SUPPORTED_SCREEN_IDS:
+            for layout_object in self.layout_data.objects_for_screen(screen_id):
+                if layout_object.todo_text.strip():
+                    items.append(layout_object)
+        items.sort(key=lambda item: (item.screen_id, item.object_type, item.object_id))
+        return items
+
+    def _selected_todo_item(self) -> LayoutObject | None:
+        todo_items = self._todo_items()
+        if not todo_items:
+            return None
+        if self.selected_todo_path is not None:
+            for item in todo_items:
+                if item.path == self.selected_todo_path:
+                    return item
+        return todo_items[0]
+
+    def _sync_selected_todo_with_object(self) -> None:
+        selected_object = self._selected_layout_object()
+        if selected_object is not None and selected_object.todo_text.strip():
+            self.selected_todo_path = selected_object.path
+            return
+        selected_todo = self._selected_todo_item()
+        self.selected_todo_path = selected_todo.path if selected_todo is not None else None
+
+    def _todo_list_html(self) -> str:
+        todo_items = self._todo_items()
+        if not todo_items:
+            return "<font face=consolas size=3>Нет созданных задач.</font>"
+
+        lines = ["<font face=consolas size=3>"]
+        for item in todo_items:
+            mark = "[x]" if item.path == self.selected_todo_path else "[ ]"
+            first_line = item.todo_text.strip().splitlines()[0] if item.todo_text.strip() else ""
+            lines.append(html.escape(f"{mark} {item.path}"))
+            if first_line:
+                lines.append(html.escape(f"    {first_line[:52]}"))
+            lines.append("")
+        lines.append("</font>")
+        return "<br>".join(lines)
+
+    def _todo_selection_items(self) -> list[str]:
+        todo_items = self._todo_items()
+        if not todo_items:
+            return ["Нет созданных задач"]
+
+        items: list[str] = []
+        self.todo_paths_by_label = {}
+        for item in todo_items:
+            first_line = item.todo_text.strip().splitlines()[0] if item.todo_text.strip() else ""
+            label = f"{item.path} | {first_line[:34]}"
+            self.todo_paths_by_label[label] = item.path
+            items.append(label)
+        return items
+
+    def _selected_todo_html(self) -> str:
+        selected_todo = self._selected_todo_item()
+        if selected_todo is None:
+            return "<font face=consolas size=3>Задача не выбрана.</font>"
+        return (
+            "<font face=consolas size=3>"
+            f"<b>{html.escape(selected_todo.path)}</b><br><br>"
+            f"{html.escape(selected_todo.todo_text).replace(chr(10), '<br>')}"
+            "</font>"
+        )
+
+    def _update_todo_view(self) -> None:
+        if not hasattr(self, "todo_list"):
+            return
+        items = self._todo_selection_items()
+        try:
+            self.todo_list.set_item_list(items)
+        except AttributeError:
+            self.todo_list.kill()
+            self.todo_list = UISelectionList(
+                item_list=items,
+                relative_rect=pygame.Rect(8, 36, 286, 116),
+                manager=self.manager,
+                container=self.todo_existing_panel,
+                object_id="#win95_selection_list",
+            )
+        selected_todo = self._selected_todo_item()
+        if selected_todo is not None:
+            for label, path in self.todo_paths_by_label.items():
+                if path == selected_todo.path:
+                    if hasattr(self.todo_list, "set_default_selection"):
+                        self.todo_list.set_default_selection(label)
+                    break
+        self.todo_text.set_text(self._selected_todo_html())
+
+    def _select_todo_by_label(self, label: str) -> None:
+        selected_path = self.todo_paths_by_label.get(label)
+        if selected_path is None:
+            return
+        self.selected_todo_path = selected_path
+        self._update_todo_view()
+
+    def _add_task_for_selected_object(self) -> None:
+        entry = self._selected_layout_entry()
+        if entry is None or not hasattr(self, "new_todo_entry"):
+            return
+        task_text = self.new_todo_entry.get_text().strip()
+        if not task_text:
+            return
+        entry["todo_text"] = task_text
+        selected_object = self._selected_layout_object()
+        self.selected_todo_path = selected_object.path if selected_object is not None else None
+        self._refresh_layout_session_view()
+
+    def _clean_new_task_form(self) -> None:
+        if hasattr(self, "new_todo_entry"):
+            self.new_todo_entry.set_text("")
+
+    def _selected_todo_structured_text(self) -> str | None:
+        selected_todo = self._selected_todo_item()
+        if selected_todo is None:
+            return None
+        return (
+            "Layout Debug Tool task\n"
+            f"Screen: {selected_todo.screen_id}\n"
+            f"Object: {selected_todo.object_id}\n"
+            f"Path: {selected_todo.path}\n"
+            f"Type: {selected_todo.object_type}\n"
+            "\n"
+            "Task:\n"
+            f"{selected_todo.todo_text.strip()}"
+        )
+
+    def _copy_selected_todo_to_clipboard(self) -> None:
+        task_text = self._selected_todo_structured_text()
+        if not task_text:
+            self._set_status_message("Copy failed: task is not selected")
+            return
+        try:
+            pygame.scrap.init()
+            pygame.scrap.put(pygame.SCRAP_TEXT, clipboard_text_bytes(task_text))
+        except pygame.error as exc:
+            self._set_status_message(f"Copy failed: {exc}")
+            return
+        self._set_status_message("Copied selected task to clipboard")
+
+    def _update_new_task_focus_indicator(self) -> None:
+        if not hasattr(self, "new_task_title_label"):
+            return
+        suffix = "  ACTIVE" if self.new_todo_entry_active else ""
+        self.new_task_title_label.set_text(f"СОЗДАТЬ НОВУЮ ЗАДАЧУ{suffix}")
+
+    def _set_new_task_entry_active_from_mouse(self, pos: tuple[int, int]) -> None:
+        if not hasattr(self, "new_todo_entry"):
+            return
+        was_active = self.new_todo_entry_active
+        self.new_todo_entry_active = self.new_todo_entry.get_abs_rect().collidepoint(pos)
+        if self.new_todo_entry_active != was_active:
+            self._update_new_task_focus_indicator()
 
     def _apply_inspector_field_change(self, field_name: str, text: str) -> None:
         entry = self._selected_layout_entry()
@@ -831,6 +1033,7 @@ class LayoutDebugToolV2Shell:
             container=self.todo_panel,
             object_id="#win95_sunken_panel",
         )
+        self.todo_existing_panel = existing_panel
         new_panel = UIPanel(
             relative_rect=pygame.Rect(778, 34, 790, 188),
             manager=self.manager,
@@ -845,21 +1048,12 @@ class LayoutDebugToolV2Shell:
             container=existing_panel,
             object_id="#win95_label",
         )
-        self.todo_list = UITextBox(
-            html_text=(
-                "<font face=consolas size=3>"
-                "[ ] game_table.player_left_panel<br>"
-                "&nbsp;&nbsp;&nbsp;&nbsp;Поднять выше<br><br>"
-                "[!] game_ui.pass_button<br>"
-                "&nbsp;&nbsp;&nbsp;&nbsp;Сдвинуть ближе к Take<br><br>"
-                "[ ] modal_intro.panel<br>"
-                "&nbsp;&nbsp;&nbsp;&nbsp;Уменьшить ширину"
-                "</font>"
-            ),
+        self.todo_list = UISelectionList(
+            item_list=self._todo_selection_items(),
             relative_rect=pygame.Rect(8, 36, 286, 116),
             manager=self.manager,
             container=existing_panel,
-            object_id="#win95_textbox",
+            object_id="#win95_selection_list",
         )
         UILabel(
             pygame.Rect(330, 12, 386, 18),
@@ -869,49 +1063,57 @@ class LayoutDebugToolV2Shell:
             object_id="#win95_label",
         )
         self.todo_text = UITextBox(
-            html_text="Поднять панель выше и выровнять относительно верхней панели игрока.",
+            html_text=self._selected_todo_html(),
             relative_rect=pygame.Rect(330, 36, 386, 116),
             manager=self.manager,
             container=existing_panel,
             object_id="#win95_textbox",
         )
+        self.edit_task_button = None
+        self.copy_task_button = None
         for idx, text in enumerate(["Edit", "Copy"]):
-            UIButton(
+            button = UIButton(
                 pygame.Rect(407 + idx * 124, 160, 112, 22),
                 text,
                 self.manager,
                 container=existing_panel,
                 object_id="#win95_button",
             )
+            if text == "Edit":
+                self.edit_task_button = button
+            else:
+                self.copy_task_button = button
 
-        UILabel(
+        self.new_task_title_label = UILabel(
             pygame.Rect(8, 12, 360, 18),
             "СОЗДАТЬ НОВУЮ ЗАДАЧУ",
             self.manager,
             container=new_panel,
             object_id="#win95_label",
         )
-        UITextBox(
-            html_text="Описание новой задачи для выбранного объекта.",
+        self.new_todo_entry = UITextEntryBox(
+            initial_text="",
             relative_rect=pygame.Rect(8, 36, 600, 138),
             manager=self.manager,
             container=new_panel,
-            object_id="#win95_textbox",
+            object_id="#win95_input",
         )
-        UIButton(
+        self.add_task_button = UIButton(
             pygame.Rect(628, 68, 128, 30),
             "Add task",
             self.manager,
             container=new_panel,
             object_id="#win95_button",
         )
-        UIButton(
+        self._update_todo_view()
+        self.clean_task_button = UIButton(
             pygame.Rect(628, 112, 128, 30),
             "Clean",
             self.manager,
             container=new_panel,
             object_id="#win95_button",
         )
+        self._update_new_task_focus_indicator()
 
     def _filter_text(self, filter_id: str, label: str) -> str:
         mark = "x" if filter_id in self.selected_filter_types else " "
@@ -978,6 +1180,8 @@ class LayoutDebugToolV2Shell:
         self.selected_object_snapshot = self._copy_selected_layout_entry()
         self.navigator_body.set_text(self._navigator_html())
         self._update_inspector()
+        self._sync_selected_todo_with_object()
+        self._update_todo_view()
         self._update_session_status()
 
     def _event_targets_text_entry(self, event: pygame.event.Event) -> bool:
@@ -1067,6 +1271,7 @@ class LayoutDebugToolV2Shell:
         if event.type == pygame.MOUSEMOTION:
             self._set_hover_from_mouse(event.pos)
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            self._set_new_task_entry_active_from_mouse(event.pos)
             self._set_hover_from_mouse(event.pos)
             self._select_hovered_object()
         if event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED and event.ui_element == self.screen_dropdown:
@@ -1079,7 +1284,23 @@ class LayoutDebugToolV2Shell:
             if field_name is not None:
                 self._apply_inspector_field_change(field_name, getattr(event, "text", ""))
             return
+        if UI_SELECTION_LIST_NEW_SELECTION is not None and event.type == UI_SELECTION_LIST_NEW_SELECTION:
+            if event.ui_element == self.todo_list:
+                self._select_todo_by_label(getattr(event, "text", ""))
+            return
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element == self.apply_button:
+                self._apply_session_to_config()
+                return
+            if event.ui_element == self.copy_task_button:
+                self._copy_selected_todo_to_clipboard()
+                return
+            if event.ui_element == self.add_task_button:
+                self._add_task_for_selected_object()
+                return
+            if event.ui_element == self.clean_task_button:
+                self._clean_new_task_form()
+                return
             if event.ui_element == self.dismiss_button:
                 self._dismiss_selected_object_changes()
                 return
