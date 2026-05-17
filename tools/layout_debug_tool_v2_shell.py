@@ -8,12 +8,10 @@ import pygame_gui
 from pygame_gui.elements import (
     UIButton,
     UIDropDownMenu,
-    UIHorizontalScrollBar,
     UILabel,
     UIPanel,
     UITextBox,
     UITextEntryLine,
-    UIVerticalScrollBar,
 )
 
 
@@ -182,20 +180,6 @@ class LayoutDebugToolV2Shell:
             manager=self.manager,
             container=self.navigator_panel,
             object_id="#win95_textbox",
-        )
-        self.navigator_vertical_scrollbar = UIVerticalScrollBar(
-            relative_rect=pygame.Rect(NAVIGATOR_RECT.width - 26, 34, 16, NAVIGATOR_RECT.height - 66),
-            visible_percentage=0.72,
-            manager=self.manager,
-            container=self.navigator_panel,
-            object_id="#win95_scrollbar",
-        )
-        self.navigator_horizontal_scrollbar = UIHorizontalScrollBar(
-            relative_rect=pygame.Rect(10, NAVIGATOR_RECT.height - 24, NAVIGATOR_RECT.width - 42, 16),
-            visible_percentage=0.72,
-            manager=self.manager,
-            container=self.navigator_panel,
-            object_id="#win95_scrollbar",
         )
 
         self.inspector_panel = UIPanel(
@@ -403,13 +387,6 @@ class LayoutDebugToolV2Shell:
             manager=self.manager,
             container=existing_panel,
             object_id="#win95_textbox",
-        )
-        self.todo_list_horizontal_scrollbar = UIHorizontalScrollBar(
-            relative_rect=pygame.Rect(8, 196, 286, 16),
-            visible_percentage=0.72,
-            manager=self.manager,
-            container=existing_panel,
-            object_id="#win95_scrollbar",
         )
         UILabel(
             pygame.Rect(330, 12, 386, 18),
