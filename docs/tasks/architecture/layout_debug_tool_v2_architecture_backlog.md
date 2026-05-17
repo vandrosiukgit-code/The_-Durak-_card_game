@@ -2,7 +2,7 @@
 
 Статус: открыт, 2026-05-17.
 
-Текущий этап: Этап 3 подтверждён пользователем, следующий этап — Этап 4 `Вынести preview geometry`.
+Текущий этап: Этап 4 подтверждён пользователем, следующий этап — Этап 5 `Вынести TO DO-логику`.
 
 Основан на:
 - [../../architecture/code_quality_principles.md](../../architecture/code_quality_principles.md)
@@ -114,6 +114,8 @@ Baseline checklist:
 - `Dismiss`, `Cancel`, `Reset session` работают как раньше.
 
 ## Этап 4. Вынести preview geometry
+
+Статус: закрыт, подтверждён пользователем после ручной проверки preview, hover/select и hitboxes.
 
 Цель: отделить игровую геометрию от shell UI.
 
