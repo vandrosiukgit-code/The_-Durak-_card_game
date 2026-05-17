@@ -4,7 +4,6 @@ import copy
 import html
 import json
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 import pygame
@@ -41,6 +40,7 @@ from durak_app.config import (  # noqa: E402
     TABLE_RECT,
     WIDTH,
 )
+from durak_app.tools.layout_debug.models import LayoutObject, safe_int, safe_str  # noqa: E402
 
 THEME_PATH = PROJECT_ROOT / "ui_theme" / "layout_debug_tool_win95.json"
 APP_CONFIG_PATH = PROJECT_ROOT / "app_config.json"
@@ -82,63 +82,10 @@ HOVER_COLOR = pygame.Color(255, 255, 170)
 SELECTED_COLOR = pygame.Color(255, 210, 80)
 
 
-def safe_int(value: object, fallback: int = 0) -> int:
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return fallback
-
-
-def safe_str(value: object, fallback: str = "") -> str:
-    return value if isinstance(value, str) else fallback
-
-
 def clipboard_text_bytes(text: str) -> bytes:
     if sys.platform == "win32":
         return text.encode("mbcs", errors="replace")
     return text.encode("utf-8")
-
-
-@dataclass(frozen=True)
-class LayoutObject:
-    screen_id: str
-    object_id: str
-    path: str
-    object_type: str
-    x: int
-    y: int
-    width: int
-    height: int
-    delta_x: int
-    delta_y: int
-    width_delta: int
-    height_delta: int
-    color: str
-    font: str
-    font_size: int
-    todo_text: str
-
-    @classmethod
-    def from_config_entry(cls, screen_id: str, object_id: str, entry: object) -> "LayoutObject":
-        safe_entry = entry if isinstance(entry, dict) else {}
-        return cls(
-            screen_id=screen_id,
-            object_id=object_id,
-            path=f"{screen_id}.{object_id}",
-            object_type=safe_str(safe_entry.get("type"), "block"),
-            x=safe_int(safe_entry.get("x")),
-            y=safe_int(safe_entry.get("y")),
-            width=safe_int(safe_entry.get("width")),
-            height=safe_int(safe_entry.get("height")),
-            delta_x=safe_int(safe_entry.get("delta_x")),
-            delta_y=safe_int(safe_entry.get("delta_y")),
-            width_delta=safe_int(safe_entry.get("width_delta")),
-            height_delta=safe_int(safe_entry.get("height_delta")),
-            color=safe_str(safe_entry.get("color"), ""),
-            font=safe_str(safe_entry.get("font"), ""),
-            font_size=safe_int(safe_entry.get("font_size")),
-            todo_text=safe_str(safe_entry.get("todo_text"), ""),
-        )
 
 
 class LayoutDataSource:
