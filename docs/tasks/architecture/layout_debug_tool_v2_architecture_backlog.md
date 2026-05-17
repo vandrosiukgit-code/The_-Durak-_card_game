@@ -2,6 +2,8 @@
 
 Статус: открыт, 2026-05-17.
 
+Текущий этап: Этап 0 закрыт документально, следующий этап — Этап 1 `Вынести модели`.
+
 Основан на:
 - [../../architecture/code_quality_principles.md](../../architecture/code_quality_principles.md)
 - [../../architecture/layout_debug_tool_v2_code_audit.md](../../architecture/layout_debug_tool_v2_code_audit.md)
@@ -16,7 +18,12 @@
 
 ## Этап 0. Зафиксировать текущее поведение
 
+Статус: закрыт документально.
+
 Цель: перед рефакторингом описать, что нельзя сломать.
+
+Baseline checklist:
+- [layout_debug_tool_v2_baseline_checklist.md](layout_debug_tool_v2_baseline_checklist.md)
 
 Проверяемые сценарии:
 - запуск `tools/layout_debug_tool_v2_shell.py`;
