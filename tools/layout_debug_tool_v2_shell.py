@@ -43,7 +43,8 @@ from durak_app.tools.layout_debug.config_repository import (  # noqa: E402
     LayoutConfigRepository,
     LayoutDataSource,
 )
-from durak_app.tools.layout_debug.models import LayoutObject, safe_int, safe_str  # noqa: E402
+from durak_app.tools.layout_debug.models import LayoutObject, safe_int  # noqa: E402
+from durak_app.tools.layout_debug.session import LayoutSession  # noqa: E402
 
 THEME_PATH = PROJECT_ROOT / "ui_theme" / "layout_debug_tool_win95.json"
 APP_CONFIG_PATH = PROJECT_ROOT / "app_config.json"
@@ -117,7 +118,7 @@ class LayoutDebugToolV2Shell:
         self.layout_data = LayoutDataSource(APP_CONFIG_PATH, SUPPORTED_SCREEN_IDS)
         self.config_repository = LayoutConfigRepository(APP_CONFIG_PATH)
         self.layout_data.load()
-        self.initial_layout = copy.deepcopy(self.layout_data.layout)
+        self.session = LayoutSession(self.layout_data.layout)
         self.session_dirty = False
         self.current_screen_id = DEFAULT_SCREEN_ID
         self.layout_objects = self.layout_data.objects_for_screen(self.current_screen_id)
@@ -127,7 +128,7 @@ class LayoutDebugToolV2Shell:
         self.layout_summary = self._layout_status_text()
         self.control_buttons: dict[UIButton, tuple[int, int, int, int]] = {}
         self.step_field: UITextEntryLine | None = None
-        self.selected_object_snapshot: dict | None = self._copy_selected_layout_entry()
+        self.session.snapshot_selected(self.current_screen_id, self.selected_layout_object_id)
         self.selected_todo_path: str | None = None
         self.todo_paths_by_label: dict[str, str] = {}
         self.new_todo_entry_active = False
@@ -137,7 +138,7 @@ class LayoutDebugToolV2Shell:
     def _layout_status_text(self) -> str:
         hover = self.hover_layout_object_id or "-"
         selected = self.selected_layout_object_id or "-"
-        session = "UNSAVED" if self.session_dirty else "saved"
+        session = "UNSAVED" if self.session.dirty else "saved"
         return (
             f"{self.layout_data.summary_text()} | "
             f"model: {self.current_screen_id}={len(self.layout_objects)} objects | "
@@ -145,7 +146,7 @@ class LayoutDebugToolV2Shell:
         )
 
     def _update_session_status(self) -> None:
-        self.session_dirty = self.layout_data.layout != self.initial_layout
+        self.session_dirty = self.session.dirty
         self.layout_summary = self._layout_status_text()
         if hasattr(self, "status_label"):
             status_text = "Статус: UNSAVED" if self.session_dirty else "Статус: saved"
@@ -165,15 +166,15 @@ class LayoutDebugToolV2Shell:
         try:
             config_data = self.config_repository.save_layout(
                 copy.deepcopy(self.layout_data.data),
-                copy.deepcopy(self.layout_data.layout),
+                copy.deepcopy(self.session.layout),
             )
         except OSError as exc:
             self._set_status_message(f"Apply failed: {type(exc).__name__}: {exc}")
             return
 
         self.layout_data.data = config_data
-        self.initial_layout = copy.deepcopy(self.layout_data.layout)
-        self.selected_object_snapshot = self._copy_selected_layout_entry()
+        self.session.mark_applied()
+        self.session.snapshot_selected(self.current_screen_id, self.selected_layout_object_id)
         self._update_session_status()
 
     def set_current_screen(self, screen_id: str) -> None:
@@ -183,7 +184,7 @@ class LayoutDebugToolV2Shell:
         self.layout_objects = self.layout_data.objects_for_screen(self.current_screen_id)
         self.selected_layout_object_id = self.layout_objects[0].object_id if self.layout_objects else None
         self.hover_layout_object_id = None
-        self.selected_object_snapshot = self._copy_selected_layout_entry()
+        self.session.snapshot_selected(self.current_screen_id, self.selected_layout_object_id)
         self.preview_rects = self._build_preview_rects()
         self.navigator_body.set_text(self._navigator_html())
         self._update_inspector()
@@ -246,29 +247,17 @@ class LayoutDebugToolV2Shell:
             return pygame.Rect(0, 0, 0, 0)
         return self.preview_rects.get(self.selected_layout_object_id, pygame.Rect(0, 0, 0, 0))
 
-    def _selected_layout_entry(self) -> dict | None:
-        if self.selected_layout_object_id is None:
-            return None
-        screen_layout = self.layout_data.layout.get(self.current_screen_id, {})
-        if not isinstance(screen_layout, dict):
-            return None
-        entry = screen_layout.get(self.selected_layout_object_id)
-        return entry if isinstance(entry, dict) else None
-
-    def _copy_selected_layout_entry(self) -> dict | None:
-        entry = self._selected_layout_entry()
-        return copy.deepcopy(entry) if entry is not None else None
-
     def _dismiss_selected_object_changes(self) -> None:
-        self.selected_object_snapshot = self._copy_selected_layout_entry()
+        self.session.dismiss_selected(self.current_screen_id, self.selected_layout_object_id)
         self._update_session_status()
 
     def _cancel_selected_object_changes(self) -> None:
-        entry = self._selected_layout_entry()
-        if entry is None or self.selected_object_snapshot is None:
-            return
-        entry.clear()
-        entry.update(copy.deepcopy(self.selected_object_snapshot))
+        if self.session.cancel_selected(self.current_screen_id, self.selected_layout_object_id):
+            self._refresh_layout_session_view()
+
+    def _reset_session_changes(self) -> None:
+        self.session.reset()
+        self.session.snapshot_selected(self.current_screen_id, self.selected_layout_object_id)
         self._refresh_layout_session_view()
 
     def _refresh_layout_session_view(self) -> None:
@@ -382,13 +371,13 @@ class LayoutDebugToolV2Shell:
         self._update_todo_view()
 
     def _add_task_for_selected_object(self) -> None:
-        entry = self._selected_layout_entry()
-        if entry is None or not hasattr(self, "new_todo_entry"):
+        if not hasattr(self, "new_todo_entry"):
             return
         task_text = self.new_todo_entry.get_text().strip()
         if not task_text:
             return
-        entry["todo_text"] = task_text
+        if not self.session.set_todo_text(self.current_screen_id, self.selected_layout_object_id, task_text):
+            return
         selected_object = self._selected_layout_object()
         self.selected_todo_path = selected_object.path if selected_object is not None else None
         self._refresh_layout_session_view()
@@ -440,27 +429,18 @@ class LayoutDebugToolV2Shell:
             self._update_new_task_focus_indicator()
 
     def _apply_inspector_field_change(self, field_name: str, text: str) -> None:
-        entry = self._selected_layout_entry()
-        if entry is None:
-            return
-
         rect = self._selected_preview_rect()
-        if field_name == "x":
-            entry["delta_x"] = safe_int(entry.get("delta_x")) + safe_int(text, rect.x) - rect.x
-        elif field_name == "y":
-            entry["delta_y"] = safe_int(entry.get("delta_y")) + safe_int(text, rect.y) - rect.y
-        elif field_name == "width":
-            entry["width_delta"] = safe_int(entry.get("width_delta")) + safe_int(text, rect.width) - rect.width
-        elif field_name == "height":
-            entry["height_delta"] = safe_int(entry.get("height_delta")) + safe_int(text, rect.height) - rect.height
-        elif field_name in {"delta_x", "delta_y", "width_delta", "height_delta", "font_size"}:
-            entry[field_name] = safe_int(text)
-        elif field_name in {"color", "font"}:
-            entry[field_name] = text.strip()
-        else:
-            return
-
-        self._refresh_layout_session_view()
+        if self.session.apply_field_change(
+            self.current_screen_id,
+            self.selected_layout_object_id,
+            field_name,
+            text,
+            rect.x,
+            rect.y,
+            rect.width,
+            rect.height,
+        ):
+            self._refresh_layout_session_view()
 
     def _current_step(self) -> int:
         if self.step_field is None:
@@ -468,18 +448,8 @@ class LayoutDebugToolV2Shell:
         return max(1, safe_int(self.step_field.get_text(), 10))
 
     def _nudge_selected_object(self, dx: int = 0, dy: int = 0, dw: int = 0, dh: int = 0) -> None:
-        entry = self._selected_layout_entry()
-        if entry is None:
-            return
-        if dx:
-            entry["delta_x"] = safe_int(entry.get("delta_x")) + dx
-        if dy:
-            entry["delta_y"] = safe_int(entry.get("delta_y")) + dy
-        if dw:
-            entry["width_delta"] = safe_int(entry.get("width_delta")) + dw
-        if dh:
-            entry["height_delta"] = safe_int(entry.get("height_delta")) + dh
-        self._refresh_layout_session_view()
+        if self.session.nudge_selected(self.current_screen_id, self.selected_layout_object_id, dx, dy, dw, dh):
+            self._refresh_layout_session_view()
 
     def _layout_rect(self, object_id: str, rect: pygame.Rect) -> pygame.Rect:
         layout_object = self._layout_object_by_id(object_id)
@@ -1056,7 +1026,7 @@ class LayoutDebugToolV2Shell:
         if self.hover_layout_object_id is None:
             return
         self.selected_layout_object_id = self.hover_layout_object_id
-        self.selected_object_snapshot = self._copy_selected_layout_entry()
+        self.session.snapshot_selected(self.current_screen_id, self.selected_layout_object_id)
         self.navigator_body.set_text(self._navigator_html())
         self._update_inspector()
         self._sync_selected_todo_with_object()
@@ -1170,6 +1140,9 @@ class LayoutDebugToolV2Shell:
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
             if event.ui_element == self.apply_button:
                 self._apply_session_to_config()
+                return
+            if event.ui_element == self.reset_button:
+                self._reset_session_changes()
                 return
             if event.ui_element == self.copy_task_button:
                 self._copy_selected_todo_to_clipboard()
