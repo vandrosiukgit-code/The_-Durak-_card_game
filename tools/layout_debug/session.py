@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 
-from durak_app.tools.layout_debug.models import safe_int
+from tools.layout_debug.models import safe_int
 
 
 class LayoutSession:

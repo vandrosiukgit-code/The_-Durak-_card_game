@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from durak_app.tools.layout_debug.models import LayoutObject
+from tools.layout_debug.models import LayoutObject
 
 
 class LayoutDataSource:
