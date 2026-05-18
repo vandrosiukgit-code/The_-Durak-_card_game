@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import pygame
 import pygame_gui
 from pygame_gui.elements import (
     UIButton,
@@ -81,15 +80,21 @@ def filter_button_text(selected_filter_types: set[str], filter_id: str, label: s
     return f"[{mark}] {label}"
 
 
-def build_section_title(manager: pygame_gui.UIManager, container: UIPanel, text: str, width: int) -> None:
+def build_section_title(
+    manager: pygame_gui.UIManager,
+    metrics: ShellLayoutMetrics,
+    container: UIPanel,
+    text: str,
+    width: int,
+) -> None:
     title_panel = UIPanel(
-        relative_rect=pygame.Rect(1, 1, width, 22),
+        relative_rect=metrics.section_title_panel_rect(width),
         manager=manager,
         container=container,
         object_id="#win95_section_title",
     )
     UILabel(
-        relative_rect=pygame.Rect(8, 1, width - 16, 18),
+        relative_rect=metrics.section_title_label_rect(width),
         text=text,
         manager=manager,
         container=title_panel,
@@ -110,9 +115,9 @@ def build_context_panel(
         manager=manager,
         object_id="#win95_panel",
     )
-    build_section_title(manager, panel, "ПАНЕЛЬ КОНТЕКСТА", metrics.context_rect.width - 2)
+    build_section_title(manager, metrics, panel, "ПАНЕЛЬ КОНТЕКСТА", metrics.context_rect.width - 2)
     UILabel(
-        relative_rect=pygame.Rect(12, 34, 58, 24),
+        relative_rect=metrics.context_screen_label_rect,
         text="Экран:",
         manager=manager,
         container=panel,
@@ -121,64 +126,62 @@ def build_context_panel(
     screen_dropdown = UIDropDownMenu(
         options_list=[screen_labels[screen_id] for screen_id in supported_screen_ids],
         starting_option=screen_labels[current_screen_id],
-        relative_rect=pygame.Rect(metrics.context_rect.x + 72, metrics.context_rect.y + 32, 220, 28),
+        relative_rect=metrics.context_screen_dropdown_rect,
         manager=manager,
     )
     status_label = UILabel(
-        relative_rect=pygame.Rect(312, 34, 210, 24),
+        relative_rect=metrics.context_status_label_rect,
         text="Статус: saved",
         manager=manager,
         container=panel,
         object_id="#win95_label",
     )
     apply_button = UIButton(
-        relative_rect=pygame.Rect(1198, 32, 108, 28),
+        relative_rect=metrics.context_apply_button_rect,
         text="Apply",
         manager=manager,
         container=panel,
         object_id="#win95_button",
     )
     reset_button = UIButton(
-        relative_rect=pygame.Rect(1316, 32, 138, 28),
+        relative_rect=metrics.context_reset_button_rect,
         text="Reset session",
         manager=manager,
         container=panel,
         object_id="#win95_button",
     )
     help_button = UIButton(
-        relative_rect=pygame.Rect(1464, 32, 92, 28),
+        relative_rect=metrics.context_help_button_rect,
         text="Help",
         manager=manager,
         container=panel,
         object_id="#win95_button",
     )
     filter_buttons: dict[str, UIButton] = {}
-    x = 12
-    for filter_id, label in [
+    for index, (filter_id, label) in enumerate([
         ("visible", "visible"),
         ("panel", "panel"),
         ("button", "button"),
         ("helper", "helper"),
         ("changed", "changed"),
-    ]:
+    ]):
         button = UIButton(
-            relative_rect=pygame.Rect(x, 68, 112, 24),
+            relative_rect=metrics.context_filter_button_rect(index),
             text=filter_button_text(selected_filter_types, filter_id, label),
             manager=manager,
             container=panel,
             object_id="#win95_button",
         )
         filter_buttons[filter_id] = button
-        x += 120
     preview_mode = UILabel(
-        relative_rect=pygame.Rect(748, 70, 230, 22),
+        relative_rect=metrics.context_preview_mode_rect,
         text="Режим preview: Hover select",
         manager=manager,
         container=panel,
         object_id="#win95_label",
     )
     hitboxes_button = UIButton(
-        relative_rect=pygame.Rect(990, 66, 160, 28),
+        relative_rect=metrics.context_hitboxes_button_rect,
         text="[ ] Show hitboxes",
         manager=manager,
         container=panel,
@@ -207,10 +210,10 @@ def build_navigator_panel(
         manager=manager,
         object_id="#win95_panel",
     )
-    build_section_title(manager, panel, "НАВИГАТОР ОБЪЕКТОВ", metrics.navigator_rect.width - 2)
+    build_section_title(manager, metrics, panel, "НАВИГАТОР ОБЪЕКТОВ", metrics.navigator_rect.width - 2)
     body = UITextBox(
         html_text=html_text,
-        relative_rect=pygame.Rect(10, 34, metrics.navigator_rect.width - 42, metrics.navigator_rect.height - 66),
+        relative_rect=metrics.navigator_body_rect,
         manager=manager,
         container=panel,
         object_id="#win95_textbox",
@@ -224,7 +227,7 @@ def build_preview_panel(manager: pygame_gui.UIManager, metrics: ShellLayoutMetri
         manager=manager,
         object_id="#win95_panel",
     )
-    build_section_title(manager, panel, "PREVIEW AREA", metrics.preview_rect.width - 2)
+    build_section_title(manager, metrics, panel, "PREVIEW AREA", metrics.preview_rect.width - 2)
     return PreviewPanelRefs(panel)
 
 
@@ -239,7 +242,7 @@ def build_status_bar(
         object_id="#win95_panel",
     )
     label = UILabel(
-        relative_rect=pygame.Rect(8, 2, metrics.window_size[0] - 32, 20),
+        relative_rect=metrics.status_label_rect,
         text=status_text,
         manager=manager,
         container=panel,
@@ -254,16 +257,16 @@ def build_inspector_panel(manager: pygame_gui.UIManager, metrics: ShellLayoutMet
         manager=manager,
         object_id="#win95_panel",
     )
-    build_section_title(manager, panel, "ИНСПЕКТОР", metrics.inspector_rect.width - 2)
+    build_section_title(manager, metrics, panel, "ИНСПЕКТОР", metrics.inspector_rect.width - 2)
     object_label = UILabel(
-        pygame.Rect(metrics.inspector_content_x, 34, 300, 22),
+        metrics.inspector_object_label_rect,
         "Object:",
         manager,
         container=panel,
         object_id="#win95_object_label",
     )
     type_label = UILabel(
-        pygame.Rect(metrics.inspector_content_x, 60, 300, 22),
+        metrics.inspector_type_label_rect,
         "Type:",
         manager,
         container=panel,
@@ -306,21 +309,21 @@ def build_inspector_panel(manager: pygame_gui.UIManager, metrics: ShellLayoutMet
     )
     step_field, control_buttons = _build_inspector_controls(manager, metrics, panel, 360)
     dismiss_button = UIButton(
-        pygame.Rect(10, metrics.inspector_action_y, 94, 24),
+        metrics.inspector_dismiss_button_rect,
         "Dismiss",
         manager,
         container=panel,
         object_id="#win95_button",
     )
     cancel_button = UIButton(
-        pygame.Rect(114, metrics.inspector_action_y, 86, 24),
+        metrics.inspector_cancel_button_rect,
         "Cancel",
         manager,
         container=panel,
         object_id="#win95_button",
     )
     copy_id_button = UIButton(
-        pygame.Rect(210, metrics.inspector_action_y, 106, 24),
+        metrics.inspector_copy_id_button_rect,
         "Copy id",
         manager,
         container=panel,
@@ -352,12 +355,12 @@ def _build_inspector_group(
     group_fields: list[tuple[str, str]],
 ) -> None:
     panel = UIPanel(
-        relative_rect=pygame.Rect(metrics.inspector_group_x, y, metrics.inspector_group_width, height),
+        relative_rect=metrics.inspector_group_rect(y, height),
         manager=manager,
         container=inspector_panel,
         object_id="#win95_sunken_panel",
     )
-    UILabel(pygame.Rect(8, 6, 140, 16), title, manager, container=panel, object_id="#win95_label")
+    UILabel(metrics.inspector_group_title_rect, title, manager, container=panel, object_id="#win95_label")
     row_y = 28
     for idx, (label, value) in enumerate(group_fields):
         px = 8 + (idx % 2) * 150
@@ -366,14 +369,14 @@ def _build_inspector_group(
         input_x = px + label_width
         input_w = 136 - label_width
         UILabel(
-            pygame.Rect(px, py, label_width - 4, 16),
+            metrics.inspector_field_label_rect(px, py, label_width),
             f"{label}:",
             manager,
             container=panel,
             object_id="#win95_small_label",
         )
         entry = UITextEntryLine(
-            relative_rect=pygame.Rect(input_x, py, input_w, 16),
+            relative_rect=metrics.inspector_field_input_rect(input_x, py, input_w),
             manager=manager,
             container=panel,
             initial_text=value,
@@ -390,33 +393,28 @@ def _build_inspector_controls(
     y: int,
 ) -> tuple[UITextEntryLine, dict[UIButton, tuple[int, int, int, int]]]:
     panel = UIPanel(
-        relative_rect=pygame.Rect(
-            metrics.inspector_group_x,
-            y,
-            metrics.inspector_group_width,
-            metrics.inspector_control_height,
-        ),
+        relative_rect=metrics.inspector_group_rect(y, metrics.inspector_control_height),
         manager=manager,
         container=inspector_panel,
         object_id="#win95_sunken_panel",
     )
-    UILabel(pygame.Rect(8, 8, 120, 16), "CONTROL", manager, container=panel, object_id="#win95_label")
-    UILabel(pygame.Rect(8, 32, 42, 16), "Step:", manager, container=panel, object_id="#win95_label")
+    UILabel(metrics.inspector_control_title_rect, "CONTROL", manager, container=panel, object_id="#win95_label")
+    UILabel(metrics.inspector_step_label_rect, "Step:", manager, container=panel, object_id="#win95_label")
     step_field = UITextEntryLine(
-        relative_rect=pygame.Rect(56, 30, 58, 20),
+        relative_rect=metrics.inspector_step_input_rect,
         manager=manager,
         container=panel,
         initial_text="10",
         object_id="#win95_input",
     )
     control_buttons: dict[UIButton, tuple[int, int, int, int]] = {}
-    UILabel(pygame.Rect(8, 62, 50, 16), "Move:", manager, container=panel, object_id="#win95_label")
+    UILabel(metrics.inspector_move_label_rect, "Move:", manager, container=panel, object_id="#win95_label")
     for idx, (text, delta) in enumerate([("<-", (-1, 0, 0, 0)), ("^", (0, -1, 0, 0)), ("v", (0, 1, 0, 0)), ("->", (1, 0, 0, 0))]):
-        button = UIButton(pygame.Rect(62 + idx * 42, 58, 36, 24), text, manager, container=panel, object_id="#win95_button")
+        button = UIButton(metrics.inspector_move_button_rect(idx), text, manager, container=panel, object_id="#win95_button")
         control_buttons[button] = delta
-    UILabel(pygame.Rect(8, 96, 42, 16), "Size:", manager, container=panel, object_id="#win95_label")
+    UILabel(metrics.inspector_size_label_rect, "Size:", manager, container=panel, object_id="#win95_label")
     for idx, (text, delta) in enumerate([("-W", (0, 0, -1, 0)), ("+W", (0, 0, 1, 0)), ("-H", (0, 0, 0, -1)), ("+H", (0, 0, 0, 1))]):
-        button = UIButton(pygame.Rect(62 + idx * 42, 92, 36, 24), text, manager, container=panel, object_id="#win95_button")
+        button = UIButton(metrics.inspector_size_button_rect(idx), text, manager, container=panel, object_id="#win95_button")
         control_buttons[button] = delta
     return step_field, control_buttons
 
@@ -432,47 +430,47 @@ def build_todo_panel(
         manager=manager,
         object_id="#win95_panel",
     )
-    build_section_title(manager, panel, "TO DO", metrics.todo_rect.width - 2)
+    build_section_title(manager, metrics, panel, "TO DO", metrics.todo_rect.width - 2)
     existing_panel = UIPanel(
-        relative_rect=pygame.Rect(8, 34, 760, 188),
+        relative_rect=metrics.todo_existing_panel_rect,
         manager=manager,
         container=panel,
         object_id="#win95_sunken_panel",
     )
     new_panel = UIPanel(
-        relative_rect=pygame.Rect(778, 34, 790, 188),
+        relative_rect=metrics.todo_new_panel_rect,
         manager=manager,
         container=panel,
         object_id="#win95_sunken_panel",
     )
-    UILabel(pygame.Rect(8, 12, 300, 18), "ПРОСМОТР СОЗДАННЫХ ЗАДАЧ", manager, container=existing_panel, object_id="#win95_label")
+    UILabel(metrics.todo_existing_title_rect, "ПРОСМОТР СОЗДАННЫХ ЗАДАЧ", manager, container=existing_panel, object_id="#win95_label")
     todo_list = UISelectionList(
         item_list=todo_items,
-        relative_rect=pygame.Rect(8, 36, 286, 116),
+        relative_rect=metrics.todo_list_rect,
         manager=manager,
         container=existing_panel,
         object_id="#win95_selection_list",
     )
-    UILabel(pygame.Rect(330, 12, 386, 18), "ВЫБРАННАЯ ЗАДАЧА", manager, container=existing_panel, object_id="#win95_label")
+    UILabel(metrics.todo_selected_title_rect, "ВЫБРАННАЯ ЗАДАЧА", manager, container=existing_panel, object_id="#win95_label")
     todo_text = UITextBox(
         html_text=selected_todo_html,
-        relative_rect=pygame.Rect(330, 36, 386, 116),
+        relative_rect=metrics.todo_selected_text_rect,
         manager=manager,
         container=existing_panel,
         object_id="#win95_textbox",
     )
-    edit_button = UIButton(pygame.Rect(407 + 0 * 124, 160, 112, 22), "Edit", manager, container=existing_panel, object_id="#win95_button")
-    copy_button = UIButton(pygame.Rect(407 + 1 * 124, 160, 112, 22), "Copy", manager, container=existing_panel, object_id="#win95_button")
-    title_label = UILabel(pygame.Rect(8, 12, 360, 18), "СОЗДАТЬ НОВУЮ ЗАДАЧУ", manager, container=new_panel, object_id="#win95_label")
+    edit_button = UIButton(metrics.todo_existing_button_rect(0), "Edit", manager, container=existing_panel, object_id="#win95_button")
+    copy_button = UIButton(metrics.todo_existing_button_rect(1), "Copy", manager, container=existing_panel, object_id="#win95_button")
+    title_label = UILabel(metrics.todo_new_title_rect, "СОЗДАТЬ НОВУЮ ЗАДАЧУ", manager, container=new_panel, object_id="#win95_label")
     entry = UITextEntryBox(
         initial_text="",
-        relative_rect=pygame.Rect(8, 36, 600, 138),
+        relative_rect=metrics.todo_new_entry_rect,
         manager=manager,
         container=new_panel,
         object_id="#win95_input",
     )
-    add_button = UIButton(pygame.Rect(628, 68, 128, 30), "Add task", manager, container=new_panel, object_id="#win95_button")
-    clean_button = UIButton(pygame.Rect(628, 112, 128, 30), "Clean", manager, container=new_panel, object_id="#win95_button")
+    add_button = UIButton(metrics.todo_add_button_rect, "Add task", manager, container=new_panel, object_id="#win95_button")
+    clean_button = UIButton(metrics.todo_clean_button_rect, "Clean", manager, container=new_panel, object_id="#win95_button")
     return TodoPanelRefs(
         panel,
         existing_panel,
