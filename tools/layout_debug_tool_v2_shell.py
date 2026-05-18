@@ -538,6 +538,45 @@ class LayoutDebugToolV2Shell:
             return False
         return True
 
+    def _route_preview_mouse_event(self, event: pygame.event.Event) -> bool:
+        if event.type == pygame.MOUSEMOTION:
+            self._set_hover_from_mouse(event.pos)
+            return True
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            self._set_new_task_entry_active_from_mouse(event.pos)
+            self._set_hover_from_mouse(event.pos)
+            self._select_hovered_object()
+            return True
+        return False
+
+    def _route_context_event(self, event: pygame.event.Event) -> bool:
+        if event.type != pygame_gui.UI_DROP_DOWN_MENU_CHANGED or event.ui_element != self.screen_dropdown:
+            return False
+        selected_screen_id = SCREEN_IDS_BY_LABEL.get(event.text)
+        if selected_screen_id is not None:
+            self.set_current_screen(selected_screen_id)
+        return True
+
+    def _route_inspector_event(self, event: pygame.event.Event) -> bool:
+        if UI_TEXT_ENTRY_FINISHED is None or event.type != UI_TEXT_ENTRY_FINISHED:
+            return False
+        field_name = self.inspector_field_names_by_element.get(event.ui_element)
+        if field_name is not None:
+            self._apply_inspector_field_change(field_name, getattr(event, "text", ""))
+        return True
+
+    def _route_todo_event(self, event: pygame.event.Event) -> bool:
+        if UI_SELECTION_LIST_NEW_SELECTION is None or event.type != UI_SELECTION_LIST_NEW_SELECTION:
+            return False
+        if event.ui_element == self.todo_list:
+            self._select_todo_by_label(getattr(event, "text", ""))
+        return True
+
+    def _route_button_event(self, event: pygame.event.Event) -> bool:
+        if event.type != pygame_gui.UI_BUTTON_PRESSED:
+            return False
+        return self.commands.handle_button(event.ui_element, self._command_targets())
+
     def _draw_background(self) -> None:
         self.window.fill(WIN95_FACE)
 
@@ -598,29 +637,15 @@ class LayoutDebugToolV2Shell:
         self.manager.process_events(event)
         if self._handle_keyboard_control(event):
             return
-        if event.type == pygame.MOUSEMOTION:
-            self._set_hover_from_mouse(event.pos)
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            self._set_new_task_entry_active_from_mouse(event.pos)
-            self._set_hover_from_mouse(event.pos)
-            self._select_hovered_object()
-        if event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED and event.ui_element == self.screen_dropdown:
-            selected_screen_id = SCREEN_IDS_BY_LABEL.get(event.text)
-            if selected_screen_id is not None:
-                self.set_current_screen(selected_screen_id)
+        self._route_preview_mouse_event(event)
+        if self._route_context_event(event):
             return
-        if UI_TEXT_ENTRY_FINISHED is not None and event.type == UI_TEXT_ENTRY_FINISHED:
-            field_name = self.inspector_field_names_by_element.get(event.ui_element)
-            if field_name is not None:
-                self._apply_inspector_field_change(field_name, getattr(event, "text", ""))
+        if self._route_inspector_event(event):
             return
-        if UI_SELECTION_LIST_NEW_SELECTION is not None and event.type == UI_SELECTION_LIST_NEW_SELECTION:
-            if event.ui_element == self.todo_list:
-                self._select_todo_by_label(getattr(event, "text", ""))
+        if self._route_todo_event(event):
             return
-        if event.type == pygame_gui.UI_BUTTON_PRESSED:
-            if self.commands.handle_button(event.ui_element, self._command_targets()):
-                return
+        if self._route_button_event(event):
+            return
 
     def run(self) -> None:
         while self.running:
