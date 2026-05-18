@@ -38,6 +38,7 @@ from tools.layout_debug.preview_geometry import (  # noqa: E402
     object_at_canvas_pos,
 )
 from tools.layout_debug.session import LayoutSession  # noqa: E402
+from tools.layout_debug.shell_layout import SHELL_LAYOUT, ShellLayoutMetrics  # noqa: E402
 from tools.layout_debug.todo import TodoClipboardFormatter, TodoService  # noqa: E402
 
 THEME_PATH = PROJECT_ROOT / "ui_theme" / "layout_debug_tool_win95.json"
@@ -52,23 +53,6 @@ SCREEN_LABELS = {
     "modal_endgame": "Финальная модалка",
 }
 SCREEN_IDS_BY_LABEL = {label: screen_id for screen_id, label in SCREEN_LABELS.items()}
-
-WINDOW_SIZE = (1600, 940)
-GAME_CANVAS_SIZE = (1600, 900)
-
-CONTEXT_RECT = pygame.Rect(12, 8, 1576, 104)
-NAVIGATOR_RECT = pygame.Rect(12, 122, 264, 540)
-INSPECTOR_RECT = pygame.Rect(284, 122, 330, 540)
-PREVIEW_RECT = pygame.Rect(622, 122, 966, 540)
-TODO_RECT = pygame.Rect(12, 672, 1576, 232)
-STATUS_RECT = pygame.Rect(4, WINDOW_SIZE[1] - 28, WINDOW_SIZE[0] - 8, 24)
-
-INSPECTOR_CONTENT_X = 10
-INSPECTOR_GROUP_X = 8
-INSPECTOR_GROUP_WIDTH = 314
-INSPECTOR_ACTION_Y = 506
-INSPECTOR_GROUP_HEIGHT = 78
-INSPECTOR_CONTROL_HEIGHT = 130
 
 WIN95_FACE = pygame.Color(192, 192, 192)
 WIN95_DARK = pygame.Color(128, 128, 128)
@@ -98,9 +82,10 @@ class LayoutDebugToolV2Shell:
     def __init__(self) -> None:
         pygame.init()
         pygame.display.set_caption("Layout Debug Tool v2 Shell")
-        self.window = pygame.display.set_mode(WINDOW_SIZE)
+        self.layout_metrics: ShellLayoutMetrics = SHELL_LAYOUT
+        self.window = pygame.display.set_mode(self.layout_metrics.window_size)
         self.clock = pygame.time.Clock()
-        self.manager = pygame_gui.UIManager(WINDOW_SIZE, str(THEME_PATH))
+        self.manager = pygame_gui.UIManager(self.layout_metrics.window_size, str(THEME_PATH))
 
         self.font = pygame.font.SysFont("consolas", 16)
         self.small_font = pygame.font.SysFont("consolas", 14)
@@ -121,7 +106,7 @@ class LayoutDebugToolV2Shell:
         self.selected_layout_object_id = self.layout_objects[0].object_id if self.layout_objects else None
         self.hover_layout_object_id: str | None = None
         self.preview_geometry = PreviewGeometryProvider()
-        self.preview_mapper = PreviewViewportMapper(GAME_CANVAS_SIZE)
+        self.preview_mapper = PreviewViewportMapper(self.layout_metrics.game_canvas_size)
         self.preview_rects = self.preview_geometry.build_preview_rects(self.current_screen_id, self.layout_objects)
         self.layout_summary = self._layout_status_text()
         self.control_buttons: dict[UIButton, tuple[int, int, int, int]] = {}
@@ -395,11 +380,11 @@ class LayoutDebugToolV2Shell:
 
     def _build_ui(self) -> None:
         self.context_panel = UIPanel(
-            relative_rect=CONTEXT_RECT,
+            relative_rect=self.layout_metrics.context_rect,
             manager=self.manager,
             object_id="#win95_panel",
         )
-        self._section_title(self.context_panel, "ПАНЕЛЬ КОНТЕКСТА", CONTEXT_RECT.width - 2)
+        self._section_title(self.context_panel, "ПАНЕЛЬ КОНТЕКСТА", self.layout_metrics.context_rect.width - 2)
         self.screen_label = UILabel(
             relative_rect=pygame.Rect(12, 34, 58, 24),
             text="Экран:",
@@ -410,7 +395,7 @@ class LayoutDebugToolV2Shell:
         self.screen_dropdown = UIDropDownMenu(
             options_list=[SCREEN_LABELS[screen_id] for screen_id in SUPPORTED_SCREEN_IDS],
             starting_option=SCREEN_LABELS[self.current_screen_id],
-            relative_rect=pygame.Rect(CONTEXT_RECT.x + 72, CONTEXT_RECT.y + 32, 220, 28),
+            relative_rect=pygame.Rect(self.layout_metrics.context_rect.x + 72, self.layout_metrics.context_rect.y + 32, 220, 28),
             manager=self.manager,
         )
         self.status_label = UILabel(
@@ -475,49 +460,49 @@ class LayoutDebugToolV2Shell:
         )
 
         self.navigator_panel = UIPanel(
-            relative_rect=NAVIGATOR_RECT,
+            relative_rect=self.layout_metrics.navigator_rect,
             manager=self.manager,
             object_id="#win95_panel",
         )
-        self._section_title(self.navigator_panel, "НАВИГАТОР ОБЪЕКТОВ", NAVIGATOR_RECT.width - 2)
+        self._section_title(self.navigator_panel, "НАВИГАТОР ОБЪЕКТОВ", self.layout_metrics.navigator_rect.width - 2)
         self.navigator_body = UITextBox(
             html_text=self._navigator_html(),
-            relative_rect=pygame.Rect(10, 34, NAVIGATOR_RECT.width - 42, NAVIGATOR_RECT.height - 66),
+            relative_rect=pygame.Rect(10, 34, self.layout_metrics.navigator_rect.width - 42, self.layout_metrics.navigator_rect.height - 66),
             manager=self.manager,
             container=self.navigator_panel,
             object_id="#win95_textbox",
         )
 
         self.inspector_panel = UIPanel(
-            relative_rect=INSPECTOR_RECT,
+            relative_rect=self.layout_metrics.inspector_rect,
             manager=self.manager,
             object_id="#win95_panel",
         )
-        self._section_title(self.inspector_panel, "ИНСПЕКТОР", INSPECTOR_RECT.width - 2)
+        self._section_title(self.inspector_panel, "ИНСПЕКТОР", self.layout_metrics.inspector_rect.width - 2)
         self._build_inspector()
 
         self.preview_panel = UIPanel(
-            relative_rect=PREVIEW_RECT,
+            relative_rect=self.layout_metrics.preview_rect,
             manager=self.manager,
             object_id="#win95_panel",
         )
-        self._section_title(self.preview_panel, "PREVIEW AREA", PREVIEW_RECT.width - 2)
+        self._section_title(self.preview_panel, "PREVIEW AREA", self.layout_metrics.preview_rect.width - 2)
 
         self.todo_panel = UIPanel(
-            relative_rect=TODO_RECT,
+            relative_rect=self.layout_metrics.todo_rect,
             manager=self.manager,
             object_id="#win95_panel",
         )
-        self._section_title(self.todo_panel, "TO DO", TODO_RECT.width - 2)
+        self._section_title(self.todo_panel, "TO DO", self.layout_metrics.todo_rect.width - 2)
         self._build_todo()
 
         self.status_bar = UIPanel(
-            relative_rect=STATUS_RECT,
+            relative_rect=self.layout_metrics.status_rect,
             manager=self.manager,
             object_id="#win95_panel",
         )
         self.status_bar_label = UILabel(
-            relative_rect=pygame.Rect(8, 2, WINDOW_SIZE[0] - 32, 20),
+            relative_rect=pygame.Rect(8, 2, self.layout_metrics.window_size[0] - 32, 20),
             text=self.layout_summary,
             manager=self.manager,
             container=self.status_bar,
@@ -541,14 +526,14 @@ class LayoutDebugToolV2Shell:
 
     def _build_inspector(self) -> None:
         self.inspector_object_label = UILabel(
-            pygame.Rect(INSPECTOR_CONTENT_X, 34, 300, 22),
+            pygame.Rect(self.layout_metrics.inspector_content_x, 34, 300, 22),
             "Object:",
             self.manager,
             container=self.inspector_panel,
             object_id="#win95_object_label",
         )
         self.inspector_type_label = UILabel(
-            pygame.Rect(INSPECTOR_CONTENT_X, 60, 300, 22),
+            pygame.Rect(self.layout_metrics.inspector_content_x, 60, 300, 22),
             "Type:",
             self.manager,
             container=self.inspector_panel,
@@ -559,40 +544,40 @@ class LayoutDebugToolV2Shell:
         self._inspector_group(
             "GEOMETRY",
             96,
-            INSPECTOR_GROUP_HEIGHT,
+            self.layout_metrics.inspector_group_height,
             [("x", "0"), ("y", "0"), ("width", "0"), ("height", "0")],
         )
         self._inspector_group(
             "LAYOUT DELTAS",
             184,
-            INSPECTOR_GROUP_HEIGHT,
+            self.layout_metrics.inspector_group_height,
             [("delta_x", "0"), ("delta_y", "0"), ("width_delta", "0"), ("height_delta", "0")],
         )
         self._inspector_group(
             "VISUAL",
             272,
-            INSPECTOR_GROUP_HEIGHT,
+            self.layout_metrics.inspector_group_height,
             [("color", "#c0c0c0"), ("font", "Arial"), ("font_size", "14")],
         )
         self._build_inspector_controls(360)
         self._update_inspector()
 
         self.dismiss_button = UIButton(
-            pygame.Rect(10, INSPECTOR_ACTION_Y, 94, 24),
+            pygame.Rect(10, self.layout_metrics.inspector_action_y, 94, 24),
             "Dismiss",
             self.manager,
             container=self.inspector_panel,
             object_id="#win95_button",
         )
         self.cancel_button = UIButton(
-            pygame.Rect(114, INSPECTOR_ACTION_Y, 86, 24),
+            pygame.Rect(114, self.layout_metrics.inspector_action_y, 86, 24),
             "Cancel",
             self.manager,
             container=self.inspector_panel,
             object_id="#win95_button",
         )
         UIButton(
-            pygame.Rect(210, INSPECTOR_ACTION_Y, 106, 24),
+            pygame.Rect(210, self.layout_metrics.inspector_action_y, 106, 24),
             "Copy id",
             self.manager,
             container=self.inspector_panel,
@@ -601,7 +586,7 @@ class LayoutDebugToolV2Shell:
 
     def _inspector_group(self, title: str, y: int, height: int, fields: list[tuple[str, str]]) -> None:
         panel = UIPanel(
-            relative_rect=pygame.Rect(INSPECTOR_GROUP_X, y, INSPECTOR_GROUP_WIDTH, height),
+            relative_rect=pygame.Rect(self.layout_metrics.inspector_group_x, y, self.layout_metrics.inspector_group_width, height),
             manager=self.manager,
             container=self.inspector_panel,
             object_id="#win95_sunken_panel",
@@ -683,7 +668,12 @@ class LayoutDebugToolV2Shell:
 
     def _build_inspector_controls(self, y: int) -> None:
         panel = UIPanel(
-            relative_rect=pygame.Rect(INSPECTOR_GROUP_X, y, INSPECTOR_GROUP_WIDTH, INSPECTOR_CONTROL_HEIGHT),
+            relative_rect=pygame.Rect(
+                self.layout_metrics.inspector_group_x,
+                y,
+                self.layout_metrics.inspector_group_width,
+                self.layout_metrics.inspector_control_height,
+            ),
             manager=self.manager,
             container=self.inspector_panel,
             object_id="#win95_sunken_panel",
