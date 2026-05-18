@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pygame
 import pygame_gui
-import pygame.scrap
 from pygame_gui.elements import UIButton, UISelectionList, UITextEntryLine
 
 UI_TEXT_ENTRY_FINISHED = getattr(pygame_gui, "UI_TEXT_ENTRY_FINISHED", None)
@@ -21,6 +20,7 @@ from tools.layout_debug.config_repository import (  # noqa: E402
     LayoutConfigRepository,
     LayoutDataSource,
 )
+from tools.layout_debug.clipboard import PygameClipboardAdapter  # noqa: E402
 from tools.layout_debug.commands import LayoutDebugCommandTargets, LayoutDebugCommands  # noqa: E402
 from tools.layout_debug.models import LayoutObject, safe_int  # noqa: E402
 from tools.layout_debug.preview_geometry import (  # noqa: E402
@@ -65,12 +65,6 @@ HOVER_COLOR = pygame.Color(255, 255, 170)
 SELECTED_COLOR = pygame.Color(255, 210, 80)
 
 
-def clipboard_text_bytes(text: str) -> bytes:
-    if sys.platform == "win32":
-        return text.encode("mbcs", errors="replace")
-    return text.encode("utf-8")
-
-
 def draw_sunken_rect(surface: pygame.Surface, rect: pygame.Rect, fill: pygame.Color) -> None:
     pygame.draw.rect(surface, fill, rect)
     pygame.draw.line(surface, WIN95_DARKER, rect.topleft, rect.topright)
@@ -99,6 +93,7 @@ class LayoutDebugToolV2Shell:
         self.session = LayoutSession(self.layout_data.layout)
         self.todo_service = TodoService(self.layout_data, SUPPORTED_SCREEN_IDS)
         self.todo_clipboard_formatter = TodoClipboardFormatter()
+        self.clipboard_adapter = PygameClipboardAdapter()
         self.navigator_view_formatter = NavigatorViewFormatter()
         self.todo_view_formatter = TodoViewFormatter()
         self.commands = LayoutDebugCommands(
@@ -307,11 +302,9 @@ class LayoutDebugToolV2Shell:
         if not task_text:
             self._set_status_message("Copy failed: task is not selected")
             return
-        try:
-            pygame.scrap.init()
-            pygame.scrap.put(pygame.SCRAP_TEXT, clipboard_text_bytes(task_text))
-        except pygame.error as exc:
-            self._set_status_message(f"Copy failed: {exc}")
+        error_message = self.clipboard_adapter.copy_text(task_text)
+        if error_message is not None:
+            self._set_status_message(f"Copy failed: {error_message}")
             return
         self._set_status_message("Copied selected task to clipboard")
 
