@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import html
 import sys
 from pathlib import Path
 
@@ -32,6 +31,7 @@ from tools.layout_debug.preview_geometry import (  # noqa: E402
 from tools.layout_debug.session import LayoutSession  # noqa: E402
 from tools.layout_debug.shell_layout import SHELL_LAYOUT, ShellLayoutMetrics  # noqa: E402
 from tools.layout_debug.todo import TodoClipboardFormatter, TodoService  # noqa: E402
+from tools.layout_debug.view_formatters import NavigatorViewFormatter, TodoViewFormatter  # noqa: E402
 from tools.layout_debug.ui_panels import (  # noqa: E402
     build_context_panel,
     build_inspector_panel,
@@ -99,6 +99,8 @@ class LayoutDebugToolV2Shell:
         self.session = LayoutSession(self.layout_data.layout)
         self.todo_service = TodoService(self.layout_data, SUPPORTED_SCREEN_IDS)
         self.todo_clipboard_formatter = TodoClipboardFormatter()
+        self.navigator_view_formatter = NavigatorViewFormatter()
+        self.todo_view_formatter = TodoViewFormatter()
         self.commands = LayoutDebugCommands(
             apply_session=self._apply_session_to_config,
             reset_session=self._reset_session_changes,
@@ -187,43 +189,12 @@ class LayoutDebugToolV2Shell:
         self._update_session_status()
 
     def _navigator_html(self) -> str:
-        if not self.layout_objects:
-            return (
-                "<font face=consolas size=3>"
-                f"<b>{html.escape(self.current_screen_id)}</b><br><br>"
-                "Нет layout-объектов."
-                "</font>"
-            )
-
-        lines = [
-            "<font face=consolas size=3>",
-            f"<b>{html.escape(self.current_screen_id)}</b>",
-            f"{len(self.layout_objects)} objects",
-            f"Selected: {html.escape(self.selected_layout_object_id or '-')}",
-            f"Hover: {html.escape(self.hover_layout_object_id or '-')}",
-            "",
-        ]
-        current_type: str | None = None
-        for layout_object in self.layout_objects:
-            if layout_object.object_type != current_type:
-                current_type = layout_object.object_type
-                lines.append(f"<b>{html.escape(current_type)}</b>")
-
-            selected_mark = " SELECTED" if layout_object.object_id == self.selected_layout_object_id else ""
-            hover_mark = " HOVER" if layout_object.object_id == self.hover_layout_object_id else ""
-            todo_mark = " TODO" if layout_object.todo_text else ""
-            delta_text = (
-                f"dx:{layout_object.delta_x} dy:{layout_object.delta_y} "
-                f"dw:{layout_object.width_delta} dh:{layout_object.height_delta}"
-            )
-            object_line = html.escape(f"  |- {layout_object.object_id}{selected_mark}{hover_mark}{todo_mark}")
-            delta_line = html.escape(f"     {delta_text}")
-            lines.append(object_line)
-            lines.append(delta_line)
-            lines.append("")
-
-        lines.append("</font>")
-        return "<br>".join(lines)
+        return self.navigator_view_formatter.html(
+            self.current_screen_id,
+            self.layout_objects,
+            self.selected_layout_object_id,
+            self.hover_layout_object_id,
+        )
 
     def _layout_object_by_id(self, object_id: str) -> LayoutObject | None:
         for layout_object in self.layout_objects:
@@ -279,15 +250,7 @@ class LayoutDebugToolV2Shell:
         return items
 
     def _selected_todo_html(self) -> str:
-        selected_todo = self._selected_todo_item()
-        if selected_todo is None:
-            return "<font face=consolas size=3>Задача не выбрана.</font>"
-        return (
-            "<font face=consolas size=3>"
-            f"<b>{html.escape(selected_todo.path)}</b><br><br>"
-            f"{html.escape(selected_todo.todo_text).replace(chr(10), '<br>')}"
-            "</font>"
-        )
+        return self.todo_view_formatter.selected_html(self._selected_todo_item())
 
     def _update_todo_view(self) -> None:
         if not hasattr(self, "todo_list"):
