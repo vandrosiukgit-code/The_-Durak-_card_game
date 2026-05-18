@@ -22,7 +22,7 @@ from tools.layout_debug.config_repository import (  # noqa: E402
     LayoutConfigRepository,
     LayoutDataSource,
 )
-from tools.layout_debug.commands import LayoutDebugCommands  # noqa: E402
+from tools.layout_debug.commands import LayoutDebugCommandTargets, LayoutDebugCommands  # noqa: E402
 from tools.layout_debug.models import LayoutObject, safe_int  # noqa: E402
 from tools.layout_debug.preview_geometry import (  # noqa: E402
     PreviewGeometryProvider,
@@ -511,6 +511,21 @@ class LayoutDebugToolV2Shell:
         self.show_hitboxes = not self.show_hitboxes
         self.hitboxes_button.set_text(("[x]" if self.show_hitboxes else "[ ]") + " Show hitboxes")
 
+    def _command_targets(self) -> LayoutDebugCommandTargets:
+        return LayoutDebugCommandTargets(
+            apply_button=self.apply_button,
+            reset_button=self.reset_button,
+            copy_task_button=self.copy_task_button,
+            add_task_button=self.add_task_button,
+            clean_task_button=self.clean_task_button,
+            dismiss_button=self.dismiss_button,
+            cancel_button=self.cancel_button,
+            control_buttons=self.control_buttons,
+            filter_buttons=self.filter_buttons,
+            hitboxes_button=self.hitboxes_button,
+            current_step=self._current_step,
+        )
+
     def _layout_preview_viewport(self) -> pygame.Rect:
         return self.preview_mapper.viewport_for_panel(self.preview_panel.get_abs_rect())
 
@@ -648,7 +663,7 @@ class LayoutDebugToolV2Shell:
                 self._select_todo_by_label(getattr(event, "text", ""))
             return
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
-            if self.commands.handle_button(event.ui_element, self):
+            if self.commands.handle_button(event.ui_element, self._command_targets()):
                 return
 
     def run(self) -> None:
