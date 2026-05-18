@@ -4,6 +4,9 @@
 
 Текущий этап: Этап 10 подтверждён пользователем. Архитектурный cleanup backlog закрыт.
 
+Следующий контрольный backlog:
+- [layout_debug_tool_v2_stage_11_backlog.md](layout_debug_tool_v2_stage_11_backlog.md)
+
 Основан на:
 - [../../architecture/code_quality_principles.md](../../architecture/code_quality_principles.md)
 - [../../architecture/layout_debug_tool_v2_code_audit.md](../../architecture/layout_debug_tool_v2_code_audit.md)
