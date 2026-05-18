@@ -8,16 +8,7 @@ from pathlib import Path
 import pygame
 import pygame_gui
 import pygame.scrap
-from pygame_gui.elements import (
-    UIButton,
-    UIDropDownMenu,
-    UILabel,
-    UIPanel,
-    UISelectionList,
-    UITextBox,
-    UITextEntryBox,
-    UITextEntryLine,
-)
+from pygame_gui.elements import UIButton, UISelectionList, UITextEntryLine
 
 UI_TEXT_ENTRY_FINISHED = getattr(pygame_gui, "UI_TEXT_ENTRY_FINISHED", None)
 UI_SELECTION_LIST_NEW_SELECTION = getattr(pygame_gui, "UI_SELECTION_LIST_NEW_SELECTION", None)
@@ -102,8 +93,6 @@ class LayoutDebugToolV2Shell:
         self.running = True
         self.selected_filter_types = {"visible", "panel", "button"}
         self.show_hitboxes = False
-        self.hover_object = "game_table.players.left.panel"
-        self.selected_object = "game_table.players.left.name"
         self.layout_data = LayoutDataSource(APP_CONFIG_PATH, SUPPORTED_SCREEN_IDS)
         self.config_repository = LayoutConfigRepository(APP_CONFIG_PATH)
         self.layout_data.load()
@@ -418,6 +407,7 @@ class LayoutDebugToolV2Shell:
         self.filter_buttons = context.filter_buttons
         self.preview_mode = context.preview_mode
         self.hitboxes_button = context.hitboxes_button
+        self.help_button.disable()
 
         navigator = build_navigator_panel(self.manager, self.layout_metrics, self._navigator_html())
         self.navigator_panel = navigator.panel
@@ -431,6 +421,8 @@ class LayoutDebugToolV2Shell:
         self.inspector_field_names_by_element = inspector.field_names_by_element
         self.dismiss_button = inspector.dismiss_button
         self.cancel_button = inspector.cancel_button
+        self.copy_id_button = inspector.copy_id_button
+        self.copy_id_button.disable()
         self.step_field = inspector.step_field
         self.control_buttons = inspector.control_buttons
         self._update_inspector()
@@ -449,6 +441,7 @@ class LayoutDebugToolV2Shell:
         self.todo_list = todo.list_widget
         self.todo_text = todo.text
         self.edit_task_button = todo.edit_button
+        self.edit_task_button.disable()
         self.copy_task_button = todo.copy_button
         self.new_task_title_label = todo.title_label
         self.new_todo_entry = todo.entry
