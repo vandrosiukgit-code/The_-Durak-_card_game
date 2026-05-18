@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from tools.layout_debug.config_repository import LayoutConfigRepository, LayoutDataSource
-from tools.layout_debug.models import LayoutObject
+from tools.layout_debug.models import LayoutObject, ScreenLayoutModel
 from tools.layout_debug.session import LayoutSession
 from tools.layout_debug.todo import TodoClipboardFormatter
 
@@ -52,6 +52,25 @@ class LayoutObjectTests(unittest.TestCase):
         self.assertEqual(layout_object.todo_text, "Поднять выше")
 
 
+class ScreenLayoutModelTests(unittest.TestCase):
+    def test_from_config_layout_normalizes_entries_and_sorts_objects(self) -> None:
+        screen_model = ScreenLayoutModel.from_config_layout(
+            "game_table",
+            {
+                "z_panel": {"type": "panel", "x": 10},
+                "a_button": {"type": "button", "x": 20},
+                "broken": "not a dict",
+            },
+        )
+
+        self.assertEqual(screen_model.object_count(), 3)
+        self.assertEqual(screen_model.entries["broken"], {})
+        self.assertEqual(
+            [layout_object.object_id for layout_object in screen_model.objects()],
+            ["broken", "a_button", "z_panel"],
+        )
+
+
 class LayoutDataSourceTests(unittest.TestCase):
     def test_load_reads_known_screens_and_builds_objects(self) -> None:
         config_path = _write_config(
@@ -81,6 +100,29 @@ class LayoutDataSourceTests(unittest.TestCase):
             [item.object_id for item in data_source.objects_for_screen("main_menu")],
             ["start_button"],
         )
+
+    def test_load_exposes_named_mutable_config_boundary_for_session(self) -> None:
+        config_path = _write_config(
+            {
+                "layout": {
+                    "game_table": {
+                        "deck_panel": {"type": "panel", "delta_x": 0},
+                    },
+                },
+            }
+        )
+
+        data_source = LayoutDataSource(config_path, SCREEN_IDS)
+        data_source.load()
+
+        session = LayoutSession(data_source.layout)
+        self.assertTrue(session.nudge_selected("game_table", "deck_panel", dx=5))
+        self.assertEqual(data_source.layout["game_table"]["deck_panel"]["delta_x"], 5)
+        self.assertEqual(data_source.objects_for_screen("game_table")[0].delta_x, 5)
+
+        session.reset()
+        self.assertEqual(data_source.layout["game_table"]["deck_panel"]["delta_x"], 0)
+        self.assertEqual(data_source.objects_for_screen("game_table")[0].delta_x, 0)
 
 
 class LayoutConfigRepositoryTests(unittest.TestCase):

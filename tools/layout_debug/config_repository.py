@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from tools.layout_debug.models import LayoutObject
+from tools.layout_debug.models import LayoutConfigData, LayoutObject, ScreenLayoutData, ScreenLayoutModel
 
 
 class LayoutDataSource:
@@ -11,7 +11,8 @@ class LayoutDataSource:
         self.config_path = config_path
         self.screen_ids = screen_ids
         self.data: dict = {}
-        self.layout: dict[str, dict] = {}
+        # Mutable boundary kept for compatibility with app_config.json and LayoutSession.
+        self.layout: LayoutConfigData = {}
         self.load_error: str | None = None
 
     def load(self) -> None:
@@ -32,7 +33,8 @@ class LayoutDataSource:
         self.layout = {}
         for screen_id in self.screen_ids:
             screen_layout = raw_layout.get(screen_id, {})
-            self.layout[screen_id] = screen_layout if isinstance(screen_layout, dict) else {}
+            screen_model = ScreenLayoutModel.from_config_layout(screen_id, screen_layout)
+            self.layout[screen_id] = screen_model.entries
         self.load_error = None
 
     def screen_ids_found(self) -> list[str]:
@@ -42,22 +44,21 @@ class LayoutDataSource:
             if self.layout_for_screen(screen_id)
         ]
 
-    def layout_for_screen(self, screen_id: str) -> dict:
+    def layout_for_screen(self, screen_id: str) -> ScreenLayoutData:
         screen_layout = self.layout.get(screen_id, {})
         return screen_layout if isinstance(screen_layout, dict) else {}
 
+    def screen_model(self, screen_id: str) -> ScreenLayoutModel:
+        return ScreenLayoutModel.from_config_layout(screen_id, self.layout_for_screen(screen_id))
+
     def object_count(self, screen_id: str) -> int:
-        return len(self.layout_for_screen(screen_id))
+        return self.screen_model(screen_id).object_count()
 
     def total_object_count(self) -> int:
         return sum(self.object_count(screen_id) for screen_id in self.screen_ids)
 
     def objects_for_screen(self, screen_id: str) -> list[LayoutObject]:
-        objects: list[LayoutObject] = []
-        for object_id, entry in self.layout_for_screen(screen_id).items():
-            objects.append(LayoutObject.from_config_entry(screen_id, str(object_id), entry))
-        objects.sort(key=lambda item: (item.object_type, item.object_id))
-        return objects
+        return self.screen_model(screen_id).objects()
 
     def summary_text(self) -> str:
         if self.load_error:
@@ -77,7 +78,7 @@ class LayoutConfigRepository:
     def __init__(self, config_path: Path) -> None:
         self.config_path = config_path
 
-    def save_layout(self, config_data: dict, layout: dict[str, dict]) -> dict:
+    def save_layout(self, config_data: dict, layout: LayoutConfigData) -> dict:
         next_config = dict(config_data)
         next_config["layout"] = layout
         self._atomic_write_config(next_config)

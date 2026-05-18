@@ -3,6 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
+LayoutEntryData = dict[str, object]
+ScreenLayoutData = dict[str, LayoutEntryData]
+LayoutConfigData = dict[str, ScreenLayoutData]
+
+
 def safe_int(value: object, fallback: int = 0) -> int:
     try:
         return int(value)
@@ -73,6 +78,31 @@ class TodoTask:
             object_type=layout_object.object_type,
             text=layout_object.todo_text,
         )
+
+
+@dataclass(frozen=True)
+class ScreenLayoutModel:
+    screen_id: str
+    entries: ScreenLayoutData
+
+    @classmethod
+    def from_config_layout(cls, screen_id: str, screen_layout: object) -> "ScreenLayoutModel":
+        entries: ScreenLayoutData = {}
+        if isinstance(screen_layout, dict):
+            for object_id, entry in screen_layout.items():
+                entries[str(object_id)] = entry if isinstance(entry, dict) else {}
+        return cls(screen_id=screen_id, entries=entries)
+
+    def object_count(self) -> int:
+        return len(self.entries)
+
+    def objects(self) -> list[LayoutObject]:
+        objects = [
+            LayoutObject.from_config_entry(self.screen_id, object_id, entry)
+            for object_id, entry in self.entries.items()
+        ]
+        objects.sort(key=lambda item: (item.object_type, item.object_id))
+        return objects
 
 
 @dataclass

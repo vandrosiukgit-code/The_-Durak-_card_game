@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import copy
 
-from tools.layout_debug.models import safe_int
+from tools.layout_debug.models import LayoutConfigData, LayoutEntryData, safe_int
 
 
 class LayoutSession:
-    def __init__(self, layout: dict[str, dict]) -> None:
+    def __init__(self, layout: LayoutConfigData) -> None:
         self.layout = layout
         self.initial_layout = copy.deepcopy(layout)
-        self.selected_object_snapshot: dict | None = None
+        self.selected_object_snapshot: LayoutEntryData | None = None
 
     @property
     def dirty(self) -> bool:
@@ -18,7 +18,7 @@ class LayoutSession:
     def mark_applied(self) -> None:
         self.initial_layout = copy.deepcopy(self.layout)
 
-    def entry(self, screen_id: str, object_id: str | None) -> dict | None:
+    def entry(self, screen_id: str, object_id: str | None) -> LayoutEntryData | None:
         if object_id is None:
             return None
         screen_layout = self.layout.get(screen_id, {})
@@ -27,7 +27,7 @@ class LayoutSession:
         entry = screen_layout.get(object_id)
         return entry if isinstance(entry, dict) else None
 
-    def copy_entry(self, screen_id: str, object_id: str | None) -> dict | None:
+    def copy_entry(self, screen_id: str, object_id: str | None) -> LayoutEntryData | None:
         entry = self.entry(screen_id, object_id)
         return copy.deepcopy(entry) if entry is not None else None
 
