@@ -38,6 +38,7 @@ from tools.layout_debug.preview_geometry import (  # noqa: E402
     object_at_canvas_pos,
 )
 from tools.layout_debug.session import LayoutSession  # noqa: E402
+from tools.layout_debug.todo import TodoClipboardFormatter, TodoService  # noqa: E402
 
 THEME_PATH = PROJECT_ROOT / "ui_theme" / "layout_debug_tool_win95.json"
 APP_CONFIG_PATH = PROJECT_ROOT / "app_config.json"
@@ -112,6 +113,8 @@ class LayoutDebugToolV2Shell:
         self.config_repository = LayoutConfigRepository(APP_CONFIG_PATH)
         self.layout_data.load()
         self.session = LayoutSession(self.layout_data.layout)
+        self.todo_service = TodoService(self.layout_data, SUPPORTED_SCREEN_IDS)
+        self.todo_clipboard_formatter = TodoClipboardFormatter()
         self.session_dirty = False
         self.current_screen_id = DEFAULT_SCREEN_ID
         self.layout_objects = self.layout_data.objects_for_screen(self.current_screen_id)
@@ -266,61 +269,17 @@ class LayoutDebugToolV2Shell:
         self._update_todo_view()
         self._update_session_status()
 
-    def _todo_items(self) -> list[LayoutObject]:
-        items: list[LayoutObject] = []
-        for screen_id in SUPPORTED_SCREEN_IDS:
-            for layout_object in self.layout_data.objects_for_screen(screen_id):
-                if layout_object.todo_text.strip():
-                    items.append(layout_object)
-        items.sort(key=lambda item: (item.screen_id, item.object_type, item.object_id))
-        return items
-
     def _selected_todo_item(self) -> LayoutObject | None:
-        todo_items = self._todo_items()
-        if not todo_items:
-            return None
-        if self.selected_todo_path is not None:
-            for item in todo_items:
-                if item.path == self.selected_todo_path:
-                    return item
-        return todo_items[0]
+        return self.todo_service.selected_item(self.selected_todo_path)
 
     def _sync_selected_todo_with_object(self) -> None:
-        selected_object = self._selected_layout_object()
-        if selected_object is not None and selected_object.todo_text.strip():
-            self.selected_todo_path = selected_object.path
-            return
-        selected_todo = self._selected_todo_item()
-        self.selected_todo_path = selected_todo.path if selected_todo is not None else None
-
-    def _todo_list_html(self) -> str:
-        todo_items = self._todo_items()
-        if not todo_items:
-            return "<font face=consolas size=3>Нет созданных задач.</font>"
-
-        lines = ["<font face=consolas size=3>"]
-        for item in todo_items:
-            mark = "[x]" if item.path == self.selected_todo_path else "[ ]"
-            first_line = item.todo_text.strip().splitlines()[0] if item.todo_text.strip() else ""
-            lines.append(html.escape(f"{mark} {item.path}"))
-            if first_line:
-                lines.append(html.escape(f"    {first_line[:52]}"))
-            lines.append("")
-        lines.append("</font>")
-        return "<br>".join(lines)
+        self.selected_todo_path = self.todo_service.sync_selected_path(
+            self._selected_layout_object(),
+            self.selected_todo_path,
+        )
 
     def _todo_selection_items(self) -> list[str]:
-        todo_items = self._todo_items()
-        if not todo_items:
-            return ["Нет созданных задач"]
-
-        items: list[str] = []
-        self.todo_paths_by_label = {}
-        for item in todo_items:
-            first_line = item.todo_text.strip().splitlines()[0] if item.todo_text.strip() else ""
-            label = f"{item.path} | {first_line[:34]}"
-            self.todo_paths_by_label[label] = item.path
-            items.append(label)
+        items, self.todo_paths_by_label = self.todo_service.selection_items()
         return items
 
     def _selected_todo_html(self) -> str:
@@ -359,7 +318,7 @@ class LayoutDebugToolV2Shell:
         self.todo_text.set_text(self._selected_todo_html())
 
     def _select_todo_by_label(self, label: str) -> None:
-        selected_path = self.todo_paths_by_label.get(label)
+        selected_path = self.todo_service.selected_path_by_label(label, self.todo_paths_by_label)
         if selected_path is None:
             return
         self.selected_todo_path = selected_path
@@ -382,19 +341,7 @@ class LayoutDebugToolV2Shell:
             self.new_todo_entry.set_text("")
 
     def _selected_todo_structured_text(self) -> str | None:
-        selected_todo = self._selected_todo_item()
-        if selected_todo is None:
-            return None
-        return (
-            "Layout Debug Tool task\n"
-            f"Screen: {selected_todo.screen_id}\n"
-            f"Object: {selected_todo.object_id}\n"
-            f"Path: {selected_todo.path}\n"
-            f"Type: {selected_todo.object_type}\n"
-            "\n"
-            "Task:\n"
-            f"{selected_todo.todo_text.strip()}"
-        )
+        return self.todo_clipboard_formatter.structured_text(self._selected_todo_item())
 
     def _copy_selected_todo_to_clipboard(self) -> None:
         task_text = self._selected_todo_structured_text()
