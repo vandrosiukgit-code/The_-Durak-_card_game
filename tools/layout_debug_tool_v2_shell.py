@@ -31,6 +31,7 @@ from tools.layout_debug.config_repository import (  # noqa: E402
     LayoutConfigRepository,
     LayoutDataSource,
 )
+from tools.layout_debug.commands import LayoutDebugCommands  # noqa: E402
 from tools.layout_debug.models import LayoutObject, safe_int  # noqa: E402
 from tools.layout_debug.preview_geometry import (  # noqa: E402
     PreviewGeometryProvider,
@@ -109,6 +110,18 @@ class LayoutDebugToolV2Shell:
         self.session = LayoutSession(self.layout_data.layout)
         self.todo_service = TodoService(self.layout_data, SUPPORTED_SCREEN_IDS)
         self.todo_clipboard_formatter = TodoClipboardFormatter()
+        self.commands = LayoutDebugCommands(
+            apply_session=self._apply_session_to_config,
+            reset_session=self._reset_session_changes,
+            copy_task=self._copy_selected_todo_to_clipboard,
+            add_task=self._add_task_for_selected_object,
+            clean_task=self._clean_new_task_form,
+            dismiss_object=self._dismiss_selected_object_changes,
+            cancel_object=self._cancel_selected_object_changes,
+            nudge_object=self._nudge_selected_object,
+            toggle_filter=self._toggle_filter,
+            toggle_hitboxes=self._toggle_hitboxes,
+        )
         self.session_dirty = False
         self.current_screen_id = DEFAULT_SCREEN_ID
         self.layout_objects = self.layout_data.objects_for_screen(self.current_screen_id)
@@ -494,6 +507,17 @@ class LayoutDebugToolV2Shell:
     def _filter_text(self, filter_id: str, label: str) -> str:
         return filter_button_text(self.selected_filter_types, filter_id, label)
 
+    def _toggle_filter(self, filter_id: str, button: object) -> None:
+        if filter_id in self.selected_filter_types:
+            self.selected_filter_types.remove(filter_id)
+        else:
+            self.selected_filter_types.add(filter_id)
+        button.set_text(self._filter_text(filter_id, filter_id))
+
+    def _toggle_hitboxes(self) -> None:
+        self.show_hitboxes = not self.show_hitboxes
+        self.hitboxes_button.set_text(("[x]" if self.show_hitboxes else "[ ]") + " Show hitboxes")
+
     def _layout_preview_viewport(self) -> pygame.Rect:
         return self.preview_mapper.viewport_for_panel(self.preview_panel.get_abs_rect())
 
@@ -631,43 +655,7 @@ class LayoutDebugToolV2Shell:
                 self._select_todo_by_label(getattr(event, "text", ""))
             return
         if event.type == pygame_gui.UI_BUTTON_PRESSED:
-            if event.ui_element == self.apply_button:
-                self._apply_session_to_config()
-                return
-            if event.ui_element == self.reset_button:
-                self._reset_session_changes()
-                return
-            if event.ui_element == self.copy_task_button:
-                self._copy_selected_todo_to_clipboard()
-                return
-            if event.ui_element == self.add_task_button:
-                self._add_task_for_selected_object()
-                return
-            if event.ui_element == self.clean_task_button:
-                self._clean_new_task_form()
-                return
-            if event.ui_element == self.dismiss_button:
-                self._dismiss_selected_object_changes()
-                return
-            if event.ui_element == self.cancel_button:
-                self._cancel_selected_object_changes()
-                return
-            if event.ui_element in self.control_buttons:
-                step = self._current_step()
-                dx, dy, dw, dh = self.control_buttons[event.ui_element]
-                self._nudge_selected_object(dx * step, dy * step, dw * step, dh * step)
-                return
-            for filter_id, button in self.filter_buttons.items():
-                if event.ui_element == button:
-                    if filter_id in self.selected_filter_types:
-                        self.selected_filter_types.remove(filter_id)
-                    else:
-                        self.selected_filter_types.add(filter_id)
-                    button.set_text(self._filter_text(filter_id, filter_id))
-                    return
-            if event.ui_element == self.hitboxes_button:
-                self.show_hitboxes = not self.show_hitboxes
-                self.hitboxes_button.set_text(("[x]" if self.show_hitboxes else "[ ]") + " Show hitboxes")
+            if self.commands.handle_button(event.ui_element, self):
                 return
 
     def run(self) -> None:
