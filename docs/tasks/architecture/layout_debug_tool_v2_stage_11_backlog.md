@@ -1,6 +1,6 @@
 # Layout Debug Tool v2: stage 11 backlog
 
-Статус: открыт, 2026-05-18. Этапы 11.1-11.7 закрыты и подтверждены пользователем.
+Статус: закрыт, 2026-05-18. Этапы 11.1-11.8 закрыты.
 
 Основан на:
 - [../../architecture/code_quality_principles.md](../../architecture/code_quality_principles.md)
@@ -233,6 +233,8 @@
 - ручная проверка `Apply`, `Cancel`, `Reset session`.
 
 ## Этап 11.8. Обновить архитектурный аудит
+
+Статус: закрыт документально.
 
 Цель: привести `layout_debug_tool_v2_code_audit.md` в соответствие с текущим кодом.
 
