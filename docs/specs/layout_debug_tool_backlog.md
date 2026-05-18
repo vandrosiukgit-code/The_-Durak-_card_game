@@ -2,13 +2,15 @@
 
 Статус: закрыт как рабочий backlog v2, 2026-05-17.
 
-Этот backlog фиксирует путь от стабильного shell-каркаса к первой живой версии Layout Debug Tool v2. Дальше новые задачи оформляются отдельным backlog, чтобы не смешивать закрытую рабочую точку и будущую полировку.
+Этот backlog фиксирует путь от стабильного shell-каркаса к первой живой версии Layout Debug Tool v2. После него был закрыт отдельный архитектурный cleanup backlog. Дальше новые задачи оформляются отдельными backlog, чтобы не смешивать закрытую рабочую точку, архитектурную стабилизацию и будущую полировку.
 
 ## Документы
 
 - Спецификация v2: [layout_debug_tool_v2.md](layout_debug_tool_v2.md)
 - Карта экрана: [layout_debug_tool_v2_screen_map.md](layout_debug_tool_v2_screen_map.md)
 - Исходная спецификация v1: [layout_debug_tool_v1.md](layout_debug_tool_v1.md)
+- Архитектурный аудит: [../architecture/layout_debug_tool_v2_code_audit.md](../architecture/layout_debug_tool_v2_code_audit.md)
+- Stage 11 cleanup backlog: [../tasks/architecture/layout_debug_tool_v2_stage_11_backlog.md](../tasks/architecture/layout_debug_tool_v2_stage_11_backlog.md)
 
 ## Главный принцип
 
@@ -31,6 +33,7 @@ Shell-интерфейс утилиты строится на `pygame_gui` в с
 - ручные shell-scrollbars и ручные shell-frame overlays убраны;
 - ручная отрисовка осталась только внутри `PREVIEW AREA`;
 - окно адаптировано под рабочий экран пользователя `1680 x 1050` и использует размер `1600 x 940`.
+- после закрытия рабочего backlog код стабилизирован через архитектурные этапы 1-11.8.
 
 ## Закрытые этапы
 
@@ -102,6 +105,7 @@ Shell-интерфейс утилиты строится на `pygame_gui` в с
 
 ## Перенесено в будущий backlog
 
+- Решение по disabled-заглушкам `Help`, `Copy id`, `Edit`: оставить как будущие функции до отдельного UX/backlog этапа.
 - Полировка `TO DO` UX.
 - Полноценное редактирование существующей задачи через кнопку `Edit`.
 - Улучшение фокуса/курсора в многострочном поле создания задачи.

@@ -1,6 +1,6 @@
 # Layout Debug Tool v2
 
-Статус: первая рабочая живая версия v2, 2026-05-17.
+Статус: рабочая живая версия v2 после архитектурного cleanup, 2026-05-18.
 
 Каноническая карта экрана: [layout_debug_tool_v2_screen_map.md](layout_debug_tool_v2_screen_map.md).
 
@@ -20,8 +20,20 @@
 
 ## 2. Реализация
 
-Основной файл:
+Точка входа:
 - `tools/layout_debug_tool_v2_shell.py`
+
+Внутренние модули:
+- `tools/layout_debug/models.py`;
+- `tools/layout_debug/config_repository.py`;
+- `tools/layout_debug/session.py`;
+- `tools/layout_debug/preview_geometry.py`;
+- `tools/layout_debug/todo.py`;
+- `tools/layout_debug/clipboard.py`;
+- `tools/layout_debug/view_formatters.py`;
+- `tools/layout_debug/shell_layout.py`;
+- `tools/layout_debug/ui_panels.py`;
+- `tools/layout_debug/commands.py`.
 
 Тема:
 - `ui_theme/layout_debug_tool_win95.json`
@@ -186,10 +198,31 @@ Backlog v2 считается закрытым, потому что:
 9. RAM-сессия, `Dismiss`, `Cancel`, `Reset session` и `Apply` подключены.
 10. `TO DO` умеет создавать, показывать и копировать задачи.
 
-## 8. Ограничения текущей версии
+## 8. Архитектурное состояние
+
+После закрытия рабочего v2 backlog был проведён отдельный архитектурный cleanup.
+
+Документы:
+- [../architecture/code_quality_principles.md](../architecture/code_quality_principles.md);
+- [../architecture/layout_debug_tool_v2_code_audit.md](../architecture/layout_debug_tool_v2_code_audit.md);
+- [../tasks/architecture/layout_debug_tool_v2_architecture_backlog.md](../tasks/architecture/layout_debug_tool_v2_architecture_backlog.md);
+- [../tasks/architecture/layout_debug_tool_v2_stage_11_backlog.md](../tasks/architecture/layout_debug_tool_v2_stage_11_backlog.md).
+
+Итог:
+- чистые слои выделены;
+- command routing отделён от прямой зависимости на shell;
+- clipboard IO вынесен в adapter;
+- HTML-formatting вынесен из shell;
+- event routing разделён по зонам;
+- внутренняя геометрия UI-панелей названа в `ShellLayoutMetrics`;
+- граница mutable layout-`dict` явно названа и покрыта тестами;
+- добавлены минимальные unit-тесты чистых слоёв.
+
+## 9. Ограничения текущей версии
 
 Эти пункты не блокируют закрытие v2 backlog и переносятся в следующий backlog:
 
+- `Help`, `Copy id`, `Edit` оставлены как disabled-заглушки и будущие функции;
 - `Edit` для существующей задачи пока не реализован;
 - UX многострочного поля создания задачи требует полировки;
 - визуальный компонент списка задач пока рабочий, но не финальный;
