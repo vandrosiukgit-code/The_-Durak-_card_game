@@ -29,17 +29,6 @@ class LayoutDebugCommandsTests(unittest.TestCase):
         self.assertTrue(handled)
         self.assertEqual(calls, [(7, 0, 0, 0)])
 
-    def test_handle_button_dispatches_filter_with_button_ref(self) -> None:
-        calls: list[tuple[str, object]] = []
-        buttons = _Buttons()
-        commands = _commands([], filter_calls=calls)
-        targets = _targets(buttons, current_step=lambda: 10)
-
-        handled = commands.handle_button(buttons.panel_filter, targets)
-
-        self.assertTrue(handled)
-        self.assertEqual(calls, [("panel", buttons.panel_filter)])
-
     def test_handle_button_returns_false_for_unknown_button(self) -> None:
         calls: list[str] = []
         buttons = _Buttons()
@@ -62,22 +51,15 @@ class _Buttons:
         self.dismiss = object()
         self.cancel = object()
         self.move_right = object()
-        self.panel_filter = object()
-        self.hitboxes = object()
 
 
 def _commands(
     calls: list[str],
     nudge_calls: list[tuple[int, int, int, int]] | None = None,
-    filter_calls: list[tuple[str, object]] | None = None,
 ) -> LayoutDebugCommands:
     def nudge(dx: int, dy: int, dw: int, dh: int) -> None:
         if nudge_calls is not None:
             nudge_calls.append((dx, dy, dw, dh))
-
-    def toggle_filter(filter_id: str, button: object) -> None:
-        if filter_calls is not None:
-            filter_calls.append((filter_id, button))
 
     return LayoutDebugCommands(
         apply_session=lambda: calls.append("apply"),
@@ -88,8 +70,6 @@ def _commands(
         dismiss_object=lambda: calls.append("dismiss"),
         cancel_object=lambda: calls.append("cancel"),
         nudge_object=nudge,
-        toggle_filter=toggle_filter,
-        toggle_hitboxes=lambda: calls.append("hitboxes"),
     )
 
 
@@ -103,8 +83,6 @@ def _targets(buttons: _Buttons, current_step: Callable[[], int]) -> LayoutDebugC
         dismiss_button=buttons.dismiss,
         cancel_button=buttons.cancel,
         control_buttons={buttons.move_right: (1, 0, 0, 0)},
-        filter_buttons={"panel": buttons.panel_filter},
-        hitboxes_button=buttons.hitboxes,
         current_step=current_step,
     )
 

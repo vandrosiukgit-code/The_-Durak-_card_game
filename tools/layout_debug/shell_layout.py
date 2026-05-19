@@ -53,17 +53,6 @@ class ShellLayoutMetrics:
     def context_help_button_rect(self) -> pygame.Rect:
         return pygame.Rect(1464, 32, 92, 28)
 
-    def context_filter_button_rect(self, index: int) -> pygame.Rect:
-        return pygame.Rect(12 + index * 120, 68, 112, 24)
-
-    @property
-    def context_preview_mode_rect(self) -> pygame.Rect:
-        return pygame.Rect(748, 70, 230, 22)
-
-    @property
-    def context_hitboxes_button_rect(self) -> pygame.Rect:
-        return pygame.Rect(990, 66, 160, 28)
-
     @property
     def navigator_body_rect(self) -> pygame.Rect:
         return pygame.Rect(10, 34, self.navigator_rect.width - 42, self.navigator_rect.height - 66)

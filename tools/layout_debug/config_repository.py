@@ -60,6 +60,12 @@ class LayoutDataSource:
     def objects_for_screen(self, screen_id: str) -> list[LayoutObject]:
         return self.screen_model(screen_id).objects()
 
+    def objects_for_preview_screen(self, screen_id: str) -> list[LayoutObject]:
+        objects = self.objects_for_screen(screen_id)
+        if screen_id == "game_table":
+            objects.extend(self.screen_model("game_ui").objects(preview_screen_id="game_table"))
+        return objects
+
     def summary_text(self) -> str:
         if self.load_error:
             return f"Layout load ERROR: {self.load_error}"

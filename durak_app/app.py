@@ -35,10 +35,10 @@ from .ui import CardAnimation
 
 
 class DurakApp:
-    def __init__(self) -> None:
+    def __init__(self, create_display: bool = True) -> None:
         pygame.init()
         pygame.display.set_caption("Durak")
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        self.screen = pygame.display.set_mode((WIDTH, HEIGHT)) if create_display else pygame.Surface((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
         self.app_config = AppConfig()
 
@@ -538,6 +538,60 @@ class DurakApp:
         survivors = [PLAYER_NAMES[seat] for seat, count in self.durak_counts.items() if count < worst_score]
         return ", ".join(survivors) if survivors else "Nobody"
 
+    def sync_scene_ui(self, mouse_pos: tuple[int, int], time_delta: float) -> None:
+        self.menu_screen.sync_ui(mouse_pos)
+        self.ui_controller.manager.set_window_resolution((WIDTH, HEIGHT))
+        self.ui_controller.update(time_delta)
+
+    def draw_scene_contents(self, mouse_pos: tuple[int, int], advance_animations: bool) -> None:
+        if self.state is not None:
+            self.table_screen.draw(mouse_pos)
+            for animation in self.animations[:]:
+                if advance_animations:
+                    animation.update()
+                animation.draw(self.screen)
+                if advance_animations and animation.done:
+                    if animation.hide_table_card is not None:
+                        self.hidden_table_cards.discard(animation.hide_table_card)
+                    self.animations.remove(animation)
+            if (
+                advance_animations
+                and self.bot_autoplay_pending
+                and not self.animations
+                and not self.intro_visible
+                and not self.endgame_visible
+                and not self.menu_visible
+                and not self.is_timer_active("bot_step_pause")
+            ):
+                self.process_pending_bot_step()
+        else:
+            self.screen.fill(TABLE_COLOR)
+            pygame.draw.rect(self.screen, PANEL_COLOR, TABLE_RECT, border_radius=40)
+            header = self.title_font.render("Durak", True, TEXT_COLOR)
+            self.screen.blit(header, (36, 20))
+
+        if self.menu_visible:
+            self.menu_screen.draw(mouse_pos)
+        else:
+            self.menu_screen.sync_ui(mouse_pos)
+
+    def render_frame(
+        self,
+        surface: pygame.Surface,
+        mouse_pos: tuple[int, int],
+        time_delta: float = 0.0,
+        advance_animations: bool = True,
+        update_display: bool = False,
+    ) -> None:
+        original_screen = self.screen
+        self.screen = surface
+        self.sync_scene_ui(mouse_pos, time_delta)
+        self.draw_scene_contents(mouse_pos, advance_animations)
+        self.ui_controller.draw(self.screen)
+        if update_display:
+            pygame.display.flip()
+        self.screen = original_screen
+
     def run(self) -> None:
         running = True
         while running:
@@ -561,28 +615,5 @@ class DurakApp:
             if self.request_quit:
                 running = False
 
-            self.ui_controller.update(time_delta)
-            if self.state is not None:
-                self.table_screen.draw(mouse_pos)
-                for animation in self.animations[:]:
-                    animation.update()
-                    animation.draw(self.screen)
-                    if animation.done:
-                        if animation.hide_table_card is not None:
-                            self.hidden_table_cards.discard(animation.hide_table_card)
-                        self.animations.remove(animation)
-                if self.bot_autoplay_pending and not self.animations and not self.intro_visible and not self.endgame_visible and not self.menu_visible and not self.is_timer_active("bot_step_pause"):
-                    self.process_pending_bot_step()
-            else:
-                self.screen.fill(TABLE_COLOR)
-                pygame.draw.rect(self.screen, PANEL_COLOR, TABLE_RECT, border_radius=40)
-                header = self.title_font.render("Durak", True, TEXT_COLOR)
-                self.screen.blit(header, (36, 20))
-
-            if self.menu_visible:
-                self.menu_screen.draw(mouse_pos)
-            else:
-                self.menu_screen.sync_ui(mouse_pos)
-            self.ui_controller.draw(self.screen)
-            pygame.display.flip()
+            self.render_frame(self.screen, mouse_pos, time_delta, advance_animations=True, update_display=True)
         pygame.quit()

@@ -152,5 +152,109 @@
       "shape": "rectangle",
       "border_width": "1"
     }
+  },
+  "#win95_selection_list.button": {
+    "misc": {
+      "text_horiz_alignment": "left",
+      "text_horiz_alignment_padding": "6"
+    }
+  },
+  "#win95_selection_list.@selection_list_item": {
+    "misc": {
+      "text_horiz_alignment": "left",
+      "text_horiz_alignment_padding": "6"
+    }
+  },
+  "#win95_selection_list.#navigator_root_item": {
+    "font": {
+      "name": "arial",
+      "size": "14",
+      "bold": "1"
+    },
+    "misc": {
+      "text_horiz_alignment": "left",
+      "text_horiz_alignment_padding": "6"
+    }
+  },
+  "#win95_selection_list.#navigator_child_item": {
+    "font": {
+      "name": "arial",
+      "size": "14"
+    },
+    "misc": {
+      "text_horiz_alignment": "left",
+      "text_horiz_alignment_padding": "6"
+    }
+  },
+  "#win95_selection_list.#navigator_root_hover_item": {
+    "font": {
+      "name": "arial",
+      "size": "14",
+      "bold": "1"
+    },
+    "colours": {
+      "normal_bg": "#d4d0c8",
+      "hovered_bg": "#d4d0c8",
+      "normal_text": "#000000",
+      "hovered_text": "#000000"
+    },
+    "misc": {
+      "text_horiz_alignment": "left",
+      "text_horiz_alignment_padding": "6"
+    }
+  },
+  "#win95_selection_list.#navigator_child_hover_item": {
+    "font": {
+      "name": "arial",
+      "size": "14"
+    },
+    "colours": {
+      "normal_bg": "#d4d0c8",
+      "hovered_bg": "#d4d0c8",
+      "normal_text": "#000000",
+      "hovered_text": "#000000"
+    },
+    "misc": {
+      "text_horiz_alignment": "left",
+      "text_horiz_alignment_padding": "6"
+    }
+  },
+  "#win95_selection_list.#navigator_focus_status_item": {
+    "font": {
+      "name": "arial",
+      "size": "14",
+      "bold": "1"
+    },
+    "colours": {
+      "normal_bg": "#c0c0c0",
+      "hovered_bg": "#c0c0c0",
+      "selected_bg": "#c0c0c0",
+      "normal_text": "#000080",
+      "hovered_text": "#000080",
+      "selected_text": "#000080"
+    },
+    "misc": {
+      "text_horiz_alignment": "left",
+      "text_horiz_alignment_padding": "6"
+    }
+  },
+  "#win95_selection_list.#navigator_group_item": {
+    "font": {
+      "name": "arial",
+      "size": "14",
+      "bold": "1"
+    },
+    "colours": {
+      "normal_bg": "#c0c0c0",
+      "hovered_bg": "#c0c0c0",
+      "selected_bg": "#c0c0c0",
+      "normal_text": "#000000",
+      "hovered_text": "#000000",
+      "selected_text": "#000000"
+    },
+    "misc": {
+      "text_horiz_alignment": "left",
+      "text_horiz_alignment_padding": "6"
+    }
   }
 }

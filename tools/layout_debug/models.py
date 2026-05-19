@@ -24,6 +24,8 @@ class LayoutObject:
     screen_id: str
     object_id: str
     path: str
+    layout_screen_id: str
+    layout_key: str
     object_type: str
     x: int
     y: int
@@ -39,12 +41,21 @@ class LayoutObject:
     todo_text: str
 
     @classmethod
-    def from_config_entry(cls, screen_id: str, object_id: str, entry: object) -> "LayoutObject":
+    def from_config_entry(
+        cls,
+        screen_id: str,
+        object_id: str,
+        entry: object,
+        layout_screen_id: str | None = None,
+    ) -> "LayoutObject":
         safe_entry = entry if isinstance(entry, dict) else {}
+        resolved_layout_screen_id = layout_screen_id or screen_id
         return cls(
             screen_id=screen_id,
             object_id=object_id,
-            path=f"{screen_id}.{object_id}",
+            path=f"{resolved_layout_screen_id}.{object_id}",
+            layout_screen_id=resolved_layout_screen_id,
+            layout_key=f"{resolved_layout_screen_id}.{object_id}",
             object_type=safe_str(safe_entry.get("type"), "block"),
             x=safe_int(safe_entry.get("x")),
             y=safe_int(safe_entry.get("y")),
@@ -96,9 +107,15 @@ class ScreenLayoutModel:
     def object_count(self) -> int:
         return len(self.entries)
 
-    def objects(self) -> list[LayoutObject]:
+    def objects(self, preview_screen_id: str | None = None) -> list[LayoutObject]:
+        resolved_preview_screen_id = preview_screen_id or self.screen_id
         objects = [
-            LayoutObject.from_config_entry(self.screen_id, object_id, entry)
+            LayoutObject.from_config_entry(
+                resolved_preview_screen_id,
+                object_id,
+                entry,
+                layout_screen_id=self.screen_id,
+            )
             for object_id, entry in self.entries.items()
         ]
         objects.sort(key=lambda item: (item.object_type, item.object_id))

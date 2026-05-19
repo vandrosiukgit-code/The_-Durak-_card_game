@@ -28,6 +28,7 @@ from tools.layout_debug.preview_geometry import (  # noqa: E402
     PreviewViewportMapper,
     object_at_canvas_pos,
 )
+from tools.layout_debug.preview_renderer import GamePreviewRenderer  # noqa: E402
 from tools.layout_debug.session import LayoutSession  # noqa: E402
 from tools.layout_debug.shell_layout import SHELL_LAYOUT, ShellLayoutMetrics  # noqa: E402
 from tools.layout_debug.todo import TodoClipboardFormatter, TodoService  # noqa: E402
@@ -39,13 +40,13 @@ from tools.layout_debug.ui_panels import (  # noqa: E402
     build_preview_panel,
     build_status_bar,
     build_todo_panel,
-    filter_button_text,
 )
 
 THEME_PATH = PROJECT_ROOT / "ui_theme" / "layout_debug_tool_win95.json"
 APP_CONFIG_PATH = PROJECT_ROOT / "app_config.json"
 
 SUPPORTED_SCREEN_IDS = ("game_table", "main_menu", "modal_intro", "modal_endgame")
+LAYOUT_SCREEN_IDS = ("game_table", "game_ui", "main_menu", "modal_intro", "modal_endgame")
 DEFAULT_SCREEN_ID = "game_table"
 SCREEN_LABELS = {
     "game_table": "Игровой стол",
@@ -85,13 +86,11 @@ class LayoutDebugToolV2Shell:
         self.font = pygame.font.SysFont("consolas", 16)
         self.small_font = pygame.font.SysFont("consolas", 14)
         self.running = True
-        self.selected_filter_types = {"visible", "panel", "button"}
-        self.show_hitboxes = False
-        self.layout_data = LayoutDataSource(APP_CONFIG_PATH, SUPPORTED_SCREEN_IDS)
+        self.layout_data = LayoutDataSource(APP_CONFIG_PATH, LAYOUT_SCREEN_IDS)
         self.config_repository = LayoutConfigRepository(APP_CONFIG_PATH)
         self.layout_data.load()
         self.session = LayoutSession(self.layout_data.layout)
-        self.todo_service = TodoService(self.layout_data, SUPPORTED_SCREEN_IDS)
+        self.todo_service = TodoService(self.layout_data, LAYOUT_SCREEN_IDS)
         self.todo_clipboard_formatter = TodoClipboardFormatter()
         self.clipboard_adapter = PygameClipboardAdapter()
         self.navigator_view_formatter = NavigatorViewFormatter()
@@ -105,21 +104,23 @@ class LayoutDebugToolV2Shell:
             dismiss_object=self._dismiss_selected_object_changes,
             cancel_object=self._cancel_selected_object_changes,
             nudge_object=self._nudge_selected_object,
-            toggle_filter=self._toggle_filter,
-            toggle_hitboxes=self._toggle_hitboxes,
         )
         self.session_dirty = False
         self.current_screen_id = DEFAULT_SCREEN_ID
-        self.layout_objects = self.layout_data.objects_for_screen(self.current_screen_id)
+        self.layout_objects = self.layout_data.objects_for_preview_screen(self.current_screen_id)
         self.selected_layout_object_id = self.layout_objects[0].object_id if self.layout_objects else None
         self.hover_layout_object_id: str | None = None
         self.preview_geometry = PreviewGeometryProvider()
         self.preview_mapper = PreviewViewportMapper(self.layout_metrics.game_canvas_size)
+        self.preview_renderer = GamePreviewRenderer(self.layout_metrics.window_size)
+        self.window = pygame.display.set_mode(self.layout_metrics.window_size)
         self.preview_rects = self.preview_geometry.build_preview_rects(self.current_screen_id, self.layout_objects)
+        self.navigator_focus_object_id: str | None = None
         self.layout_summary = self._layout_status_text()
         self.control_buttons: dict[UIButton, tuple[int, int, int, int]] = {}
         self.step_field: UITextEntryLine | None = None
-        self.session.snapshot_selected(self.current_screen_id, self.selected_layout_object_id)
+        self.session.snapshot_selected(self._selected_layout_screen_id(), self.selected_layout_object_id)
+        self.navigator_object_ids_by_label: dict[str, str] = {}
         self.selected_todo_path: str | None = None
         self.todo_paths_by_label: dict[str, str] = {}
         self.new_todo_entry_active = False
@@ -129,11 +130,12 @@ class LayoutDebugToolV2Shell:
     def _layout_status_text(self) -> str:
         hover = self.hover_layout_object_id or "-"
         selected = self.selected_layout_object_id or "-"
+        focus = self.navigator_focus_object_id or "-"
         session = "UNSAVED" if self.session.dirty else "saved"
         return (
             f"{self.layout_data.summary_text()} | "
-            f"model: {self.current_screen_id}={len(self.layout_objects)} objects | "
-            f"session: {session} | hover: {hover} | selected: {selected}"
+            f"screen: {self.current_screen_id} ({len(self.layout_objects)} objects) | "
+            f"session: {session} | selected: {selected} | hover: {hover} | focus: {focus}"
         )
 
     def _update_session_status(self) -> None:
@@ -165,19 +167,20 @@ class LayoutDebugToolV2Shell:
 
         self.layout_data.data = config_data
         self.session.mark_applied()
-        self.session.snapshot_selected(self.current_screen_id, self.selected_layout_object_id)
+        self.session.snapshot_selected(self._selected_layout_screen_id(), self.selected_layout_object_id)
         self._update_session_status()
 
     def set_current_screen(self, screen_id: str) -> None:
         if screen_id not in SUPPORTED_SCREEN_IDS:
             return
         self.current_screen_id = screen_id
-        self.layout_objects = self.layout_data.objects_for_screen(self.current_screen_id)
+        self.layout_objects = self.layout_data.objects_for_preview_screen(self.current_screen_id)
         self.selected_layout_object_id = self.layout_objects[0].object_id if self.layout_objects else None
         self.hover_layout_object_id = None
-        self.session.snapshot_selected(self.current_screen_id, self.selected_layout_object_id)
+        self.navigator_focus_object_id = None
+        self.session.snapshot_selected(self._selected_layout_screen_id(), self.selected_layout_object_id)
         self.preview_rects = self.preview_geometry.build_preview_rects(self.current_screen_id, self.layout_objects)
-        self.navigator_body.set_text(self._navigator_html())
+        self._update_navigator_view()
         self._update_inspector()
         self._sync_selected_todo_with_object()
         self._update_todo_view()
@@ -191,6 +194,53 @@ class LayoutDebugToolV2Shell:
             self.hover_layout_object_id,
         )
 
+    def _navigator_selection_items(self) -> list[str | tuple[str, str]]:
+        items, self.navigator_object_ids_by_label = self.navigator_view_formatter.selection_items(
+            self.current_screen_id,
+            self.layout_objects,
+            self.selected_layout_object_id,
+            self.hover_layout_object_id,
+            self.navigator_focus_object_id,
+        )
+        return items
+
+    def _selected_navigator_label(self) -> str | None:
+        for label, object_id in self.navigator_object_ids_by_label.items():
+            if object_id == self.selected_layout_object_id:
+                return label
+        return None
+
+    @staticmethod
+    def _set_selection_list_selected_item(selection_list: UISelectionList, selected_label: str | None) -> None:
+        for item in getattr(selection_list, "item_list", []):
+            is_selected = selected_label is not None and item.get("text") == selected_label
+            item["selected"] = is_selected
+            button = item.get("button_element")
+            if button is None:
+                continue
+            if is_selected:
+                button.select()
+            else:
+                button.unselect()
+
+    def _update_navigator_view(self) -> None:
+        if not hasattr(self, "navigator_list"):
+            return
+        items = self._navigator_selection_items()
+        try:
+            self.navigator_list.set_item_list(items)
+        except AttributeError:
+            self.navigator_list.kill()
+            self.navigator_list = UISelectionList(
+                item_list=items,
+                relative_rect=self.layout_metrics.navigator_body_rect,
+                manager=self.manager,
+                container=self.navigator_panel,
+                object_id="#win95_selection_list",
+            )
+        selected_label = self._selected_navigator_label()
+        self._set_selection_list_selected_item(self.navigator_list, selected_label)
+
     def _layout_object_by_id(self, object_id: str) -> LayoutObject | None:
         for layout_object in self.layout_objects:
             if layout_object.object_id == object_id:
@@ -202,30 +252,34 @@ class LayoutDebugToolV2Shell:
             return None
         return self._layout_object_by_id(self.selected_layout_object_id)
 
+    def _selected_layout_screen_id(self) -> str:
+        selected_object = self._selected_layout_object()
+        return selected_object.layout_screen_id if selected_object is not None else self.current_screen_id
+
     def _selected_preview_rect(self) -> pygame.Rect:
         if self.selected_layout_object_id is None:
             return pygame.Rect(0, 0, 0, 0)
         return self.preview_rects.get(self.selected_layout_object_id, pygame.Rect(0, 0, 0, 0))
 
     def _dismiss_selected_object_changes(self) -> None:
-        self.session.dismiss_selected(self.current_screen_id, self.selected_layout_object_id)
+        self.session.dismiss_selected(self._selected_layout_screen_id(), self.selected_layout_object_id)
         self._update_session_status()
 
     def _cancel_selected_object_changes(self) -> None:
-        if self.session.cancel_selected(self.current_screen_id, self.selected_layout_object_id):
+        if self.session.cancel_selected(self._selected_layout_screen_id(), self.selected_layout_object_id):
             self._refresh_layout_session_view()
 
     def _reset_session_changes(self) -> None:
         self.session.reset()
-        self.session.snapshot_selected(self.current_screen_id, self.selected_layout_object_id)
+        self.session.snapshot_selected(self._selected_layout_screen_id(), self.selected_layout_object_id)
         self._refresh_layout_session_view()
 
     def _refresh_layout_session_view(self) -> None:
-        self.layout_objects = self.layout_data.objects_for_screen(self.current_screen_id)
+        self.layout_objects = self.layout_data.objects_for_preview_screen(self.current_screen_id)
         if self.selected_layout_object_id and self._layout_object_by_id(self.selected_layout_object_id) is None:
             self.selected_layout_object_id = self.layout_objects[0].object_id if self.layout_objects else None
         self.preview_rects = self.preview_geometry.build_preview_rects(self.current_screen_id, self.layout_objects)
-        self.navigator_body.set_text(self._navigator_html())
+        self._update_navigator_view()
         self._update_inspector()
         self._sync_selected_todo_with_object()
         self._update_todo_view()
@@ -278,13 +332,40 @@ class LayoutDebugToolV2Shell:
         self.selected_todo_path = selected_path
         self._update_todo_view()
 
+    def _select_layout_object(self, object_id: str | None) -> None:
+        if object_id is None or self._layout_object_by_id(object_id) is None:
+            return
+        self.selected_layout_object_id = object_id
+        self.session.snapshot_selected(self._selected_layout_screen_id(), self.selected_layout_object_id)
+        self._update_navigator_view()
+        self._update_inspector()
+        self._sync_selected_todo_with_object()
+        self._update_todo_view()
+        self._update_session_status()
+
+    def _select_navigator_object_by_label(self, label: str) -> None:
+        self._select_layout_object(self.navigator_object_ids_by_label.get(label))
+
+    def _focus_navigator_object(self, object_id: str | None) -> None:
+        if object_id is None or self._layout_object_by_id(object_id) is None:
+            return
+        self.navigator_focus_object_id = object_id
+        self._select_layout_object(object_id)
+
+    def _clear_navigator_focus(self) -> None:
+        if self.navigator_focus_object_id is None:
+            return
+        self.navigator_focus_object_id = None
+        self._update_navigator_view()
+        self._update_session_status()
+
     def _add_task_for_selected_object(self) -> None:
         if not hasattr(self, "new_todo_entry"):
             return
         task_text = self.new_todo_entry.get_text().strip()
         if not task_text:
             return
-        if not self.session.set_todo_text(self.current_screen_id, self.selected_layout_object_id, task_text):
+        if not self.session.set_todo_text(self._selected_layout_screen_id(), self.selected_layout_object_id, task_text):
             return
         selected_object = self._selected_layout_object()
         self.selected_todo_path = selected_object.path if selected_object is not None else None
@@ -325,7 +406,7 @@ class LayoutDebugToolV2Shell:
     def _apply_inspector_field_change(self, field_name: str, text: str) -> None:
         rect = self._selected_preview_rect()
         if self.session.apply_field_change(
-            self.current_screen_id,
+            self._selected_layout_screen_id(),
             self.selected_layout_object_id,
             field_name,
             text,
@@ -342,7 +423,7 @@ class LayoutDebugToolV2Shell:
         return max(1, safe_int(self.step_field.get_text(), 10))
 
     def _nudge_selected_object(self, dx: int = 0, dy: int = 0, dw: int = 0, dh: int = 0) -> None:
-        if self.session.nudge_selected(self.current_screen_id, self.selected_layout_object_id, dx, dy, dw, dh):
+        if self.session.nudge_selected(self._selected_layout_screen_id(), self.selected_layout_object_id, dx, dy, dw, dh):
             self._refresh_layout_session_view()
 
     def _build_ui(self) -> None:
@@ -352,7 +433,6 @@ class LayoutDebugToolV2Shell:
             SCREEN_LABELS,
             SUPPORTED_SCREEN_IDS,
             self.current_screen_id,
-            self.selected_filter_types,
         )
         self.context_panel = context.panel
         self.screen_dropdown = context.screen_dropdown
@@ -360,14 +440,13 @@ class LayoutDebugToolV2Shell:
         self.apply_button = context.apply_button
         self.reset_button = context.reset_button
         self.help_button = context.help_button
-        self.filter_buttons = context.filter_buttons
-        self.preview_mode = context.preview_mode
-        self.hitboxes_button = context.hitboxes_button
         self.help_button.disable()
 
-        navigator = build_navigator_panel(self.manager, self.layout_metrics, self._navigator_html())
+        navigator = build_navigator_panel(self.manager, self.layout_metrics, self._navigator_selection_items())
         self.navigator_panel = navigator.panel
-        self.navigator_body = navigator.body
+        self.navigator_list = navigator.list_widget
+        selected_label = self._selected_navigator_label()
+        self._set_selection_list_selected_item(self.navigator_list, selected_label)
 
         inspector = build_inspector_panel(self.manager, self.layout_metrics)
         self.inspector_panel = inspector.panel
@@ -453,20 +532,6 @@ class LayoutDebugToolV2Shell:
             if field is not None:
                 field.set_text(value)
 
-    def _filter_text(self, filter_id: str, label: str) -> str:
-        return filter_button_text(self.selected_filter_types, filter_id, label)
-
-    def _toggle_filter(self, filter_id: str, button: object) -> None:
-        if filter_id in self.selected_filter_types:
-            self.selected_filter_types.remove(filter_id)
-        else:
-            self.selected_filter_types.add(filter_id)
-        button.set_text(self._filter_text(filter_id, filter_id))
-
-    def _toggle_hitboxes(self) -> None:
-        self.show_hitboxes = not self.show_hitboxes
-        self.hitboxes_button.set_text(("[x]" if self.show_hitboxes else "[ ]") + " Show hitboxes")
-
     def _command_targets(self) -> LayoutDebugCommandTargets:
         return LayoutDebugCommandTargets(
             apply_button=self.apply_button,
@@ -477,19 +542,20 @@ class LayoutDebugToolV2Shell:
             dismiss_button=self.dismiss_button,
             cancel_button=self.cancel_button,
             control_buttons=self.control_buttons,
-            filter_buttons=self.filter_buttons,
-            hitboxes_button=self.hitboxes_button,
             current_step=self._current_step,
         )
 
+    def _layout_preview_source_rect(self) -> pygame.Rect:
+        return self.preview_mapper.source_rect_for_screen(self.current_screen_id, self.preview_rects)
+
     def _layout_preview_viewport(self) -> pygame.Rect:
-        return self.preview_mapper.viewport_for_panel(self.preview_panel.get_abs_rect())
+        return self.preview_mapper.viewport_for_panel(self.preview_panel.get_abs_rect(), self._layout_preview_source_rect())
 
     def _canvas_to_viewport_rect(self, rect: pygame.Rect, viewport: pygame.Rect) -> pygame.Rect:
-        return self.preview_mapper.canvas_to_viewport_rect(rect, viewport)
+        return self.preview_mapper.canvas_to_viewport_rect(rect, viewport, self._layout_preview_source_rect())
 
     def _viewport_to_canvas_pos(self, pos: tuple[int, int], viewport: pygame.Rect) -> tuple[int, int] | None:
-        return self.preview_mapper.viewport_to_canvas_pos(pos, viewport)
+        return self.preview_mapper.viewport_to_canvas_pos(pos, viewport, self._layout_preview_source_rect())
 
     def _object_at_canvas_pos(self, pos: tuple[int, int]) -> str | None:
         return object_at_canvas_pos(pos, self.preview_rects)
@@ -497,22 +563,28 @@ class LayoutDebugToolV2Shell:
     def _set_hover_from_mouse(self, pos: tuple[int, int]) -> None:
         canvas_pos = self._viewport_to_canvas_pos(pos, self._layout_preview_viewport())
         next_hover = self._object_at_canvas_pos(canvas_pos) if canvas_pos is not None else None
+        self._set_hover_object(next_hover)
+
+    def _set_hover_object(self, next_hover: str | None) -> None:
         if next_hover == self.hover_layout_object_id:
             return
         self.hover_layout_object_id = next_hover
-        self.navigator_body.set_text(self._navigator_html())
+        self._update_navigator_view()
         self._update_session_status()
 
+    def _navigator_label_at_mouse_pos(self, pos: tuple[int, int]) -> str | None:
+        if not hasattr(self, "navigator_list"):
+            return None
+        if not self.navigator_list.get_abs_rect().collidepoint(pos):
+            return None
+        for item in getattr(self.navigator_list, "item_list", []):
+            button = item.get("button_element")
+            if button is not None and button.get_abs_rect().collidepoint(pos):
+                return item.get("text")
+        return None
+
     def _select_hovered_object(self) -> None:
-        if self.hover_layout_object_id is None:
-            return
-        self.selected_layout_object_id = self.hover_layout_object_id
-        self.session.snapshot_selected(self.current_screen_id, self.selected_layout_object_id)
-        self.navigator_body.set_text(self._navigator_html())
-        self._update_inspector()
-        self._sync_selected_todo_with_object()
-        self._update_todo_view()
-        self._update_session_status()
+        self._select_layout_object(self.hover_layout_object_id)
 
     def _event_targets_text_entry(self, event: pygame.event.Event) -> bool:
         return getattr(event, "ui_element", None) in self.inspector_field_names_by_element or getattr(event, "ui_element", None) == self.step_field
@@ -538,6 +610,12 @@ class LayoutDebugToolV2Shell:
             return False
         return True
 
+    def _route_escape_key_event(self, event: pygame.event.Event) -> bool:
+        if event.type != pygame.KEYDOWN or event.key != pygame.K_ESCAPE:
+            return False
+        self._clear_navigator_focus()
+        return True
+
     def _route_preview_mouse_event(self, event: pygame.event.Event) -> bool:
         if event.type == pygame.MOUSEMOTION:
             self._set_hover_from_mouse(event.pos)
@@ -546,6 +624,35 @@ class LayoutDebugToolV2Shell:
             self._set_new_task_entry_active_from_mouse(event.pos)
             self._set_hover_from_mouse(event.pos)
             self._select_hovered_object()
+            return True
+        return False
+
+    def _route_navigator_mouse_event(self, event: pygame.event.Event) -> bool:
+        if event.type not in {pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP}:
+            return False
+        if not self.navigator_list.get_abs_rect().collidepoint(event.pos):
+            return False
+        label = self._navigator_label_at_mouse_pos(event.pos)
+        object_id = self.navigator_object_ids_by_label.get(label)
+        if event.type == pygame.MOUSEMOTION:
+            if label is None:
+                return False
+            self._set_hover_object(object_id)
+            return True
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if label is None:
+                return False
+            self._set_hover_object(object_id)
+            self._select_layout_object(object_id)
+            return True
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button != 1:
+            if label is None:
+                self._clear_navigator_focus()
+                return True
+            if object_id is None:
+                object_id = self.hover_layout_object_id
+            self._set_hover_object(object_id)
+            self._focus_navigator_object(object_id)
             return True
         return False
 
@@ -568,9 +675,13 @@ class LayoutDebugToolV2Shell:
     def _route_todo_event(self, event: pygame.event.Event) -> bool:
         if UI_SELECTION_LIST_NEW_SELECTION is None or event.type != UI_SELECTION_LIST_NEW_SELECTION:
             return False
+        if event.ui_element == self.navigator_list:
+            self._select_navigator_object_by_label(getattr(event, "text", ""))
+            return True
         if event.ui_element == self.todo_list:
             self._select_todo_by_label(getattr(event, "text", ""))
-        return True
+            return True
+        return False
 
     def _route_button_event(self, event: pygame.event.Event) -> bool:
         if event.type != pygame_gui.UI_BUTTON_PRESSED:
@@ -580,10 +691,25 @@ class LayoutDebugToolV2Shell:
     def _draw_background(self) -> None:
         self.window.fill(WIN95_FACE)
 
-    def _draw_preview_placeholder(self) -> None:
-        panel_rect = self.preview_panel.get_abs_rect()
-
+    def _draw_preview(self) -> None:
         viewport = self._layout_preview_viewport()
+        canvas_mouse_pos = self._viewport_to_canvas_pos(pygame.mouse.get_pos(), viewport) or (-1, -1)
+        try:
+            self.preview_renderer.render(
+                self.window,
+                viewport,
+                self.current_screen_id,
+                self.session.layout,
+                canvas_mouse_pos,
+                self._layout_preview_source_rect(),
+            )
+        except Exception as error:
+            self._draw_preview_placeholder(viewport, str(error))
+            return
+
+        self._draw_preview_overlays(viewport)
+
+    def _draw_preview_placeholder(self, viewport: pygame.Rect, error_message: str = "") -> None:
         draw_sunken_rect(self.window, viewport, PREVIEW_BG)
         felt = viewport.inflate(-80, -70)
         pygame.draw.rect(self.window, PREVIEW_FELT, felt, border_radius=18)
@@ -604,9 +730,13 @@ class LayoutDebugToolV2Shell:
             surface = self.font.render(line, True, WIN95_LIGHT)
             self.window.blit(surface, surface.get_rect(center=(viewport.centerx, y)))
             y += 22
+        if error_message:
+            surface = self.small_font.render(f"render error: {error_message[:90]}", True, pygame.Color(255, 210, 80))
+            self.window.blit(surface, surface.get_rect(center=(viewport.centerx, viewport.bottom - 34)))
 
+    def _draw_preview_overlays(self, viewport: pygame.Rect) -> None:
         for object_id, rect in self.preview_rects.items():
-            if not self.show_hitboxes and object_id not in {self.hover_layout_object_id, self.selected_layout_object_id}:
+            if object_id not in {self.hover_layout_object_id, self.selected_layout_object_id}:
                 continue
             preview_rect = self._canvas_to_viewport_rect(rect, viewport)
             if object_id == self.selected_layout_object_id:
@@ -635,7 +765,11 @@ class LayoutDebugToolV2Shell:
             self.running = False
             return
         self.manager.process_events(event)
+        if self._route_escape_key_event(event):
+            return
         if self._handle_keyboard_control(event):
+            return
+        if self._route_navigator_mouse_event(event):
             return
         self._route_preview_mouse_event(event)
         if self._route_context_event(event):
@@ -656,7 +790,7 @@ class LayoutDebugToolV2Shell:
             self.manager.update(time_delta)
             self._draw_background()
             self.manager.draw_ui(self.window)
-            self._draw_preview_placeholder()
+            self._draw_preview()
 
             pygame.display.flip()
 

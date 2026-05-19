@@ -25,15 +25,12 @@ class ContextPanelRefs:
     apply_button: UIButton
     reset_button: UIButton
     help_button: UIButton
-    filter_buttons: dict[str, UIButton]
-    preview_mode: UILabel
-    hitboxes_button: UIButton
 
 
 @dataclass
 class NavigatorPanelRefs:
     panel: UIPanel
-    body: UITextBox
+    list_widget: UISelectionList
 
 
 @dataclass
@@ -75,11 +72,6 @@ class StatusBarRefs:
     label: UILabel
 
 
-def filter_button_text(selected_filter_types: set[str], filter_id: str, label: str) -> str:
-    mark = "x" if filter_id in selected_filter_types else " "
-    return f"[{mark}] {label}"
-
-
 def build_section_title(
     manager: pygame_gui.UIManager,
     metrics: ShellLayoutMetrics,
@@ -108,7 +100,6 @@ def build_context_panel(
     screen_labels: dict[str, str],
     supported_screen_ids: tuple[str, ...],
     current_screen_id: str,
-    selected_filter_types: set[str],
 ) -> ContextPanelRefs:
     panel = UIPanel(
         relative_rect=metrics.context_rect,
@@ -157,36 +148,6 @@ def build_context_panel(
         container=panel,
         object_id="#win95_button",
     )
-    filter_buttons: dict[str, UIButton] = {}
-    for index, (filter_id, label) in enumerate([
-        ("visible", "visible"),
-        ("panel", "panel"),
-        ("button", "button"),
-        ("helper", "helper"),
-        ("changed", "changed"),
-    ]):
-        button = UIButton(
-            relative_rect=metrics.context_filter_button_rect(index),
-            text=filter_button_text(selected_filter_types, filter_id, label),
-            manager=manager,
-            container=panel,
-            object_id="#win95_button",
-        )
-        filter_buttons[filter_id] = button
-    preview_mode = UILabel(
-        relative_rect=metrics.context_preview_mode_rect,
-        text="Режим preview: Hover select",
-        manager=manager,
-        container=panel,
-        object_id="#win95_label",
-    )
-    hitboxes_button = UIButton(
-        relative_rect=metrics.context_hitboxes_button_rect,
-        text="[ ] Show hitboxes",
-        manager=manager,
-        container=panel,
-        object_id="#win95_button",
-    )
     return ContextPanelRefs(
         panel,
         screen_dropdown,
@@ -194,16 +155,13 @@ def build_context_panel(
         apply_button,
         reset_button,
         help_button,
-        filter_buttons,
-        preview_mode,
-        hitboxes_button,
     )
 
 
 def build_navigator_panel(
     manager: pygame_gui.UIManager,
     metrics: ShellLayoutMetrics,
-    html_text: str,
+    items: list[str | tuple[str, str]],
 ) -> NavigatorPanelRefs:
     panel = UIPanel(
         relative_rect=metrics.navigator_rect,
@@ -211,14 +169,14 @@ def build_navigator_panel(
         object_id="#win95_panel",
     )
     build_section_title(manager, metrics, panel, "НАВИГАТОР ОБЪЕКТОВ", metrics.navigator_rect.width - 2)
-    body = UITextBox(
-        html_text=html_text,
+    list_widget = UISelectionList(
+        item_list=items,
         relative_rect=metrics.navigator_body_rect,
         manager=manager,
         container=panel,
-        object_id="#win95_textbox",
+        object_id="#win95_selection_list",
     )
-    return NavigatorPanelRefs(panel, body)
+    return NavigatorPanelRefs(panel, list_widget)
 
 
 def build_preview_panel(manager: pygame_gui.UIManager, metrics: ShellLayoutMetrics) -> PreviewPanelRefs:

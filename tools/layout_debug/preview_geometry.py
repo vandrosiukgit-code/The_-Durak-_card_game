@@ -100,6 +100,11 @@ class PreviewGeometryProvider:
             "deck_panel": deck_rect,
             "trump_panel": trump_rect,
             "actions_panel": actions_rect,
+            "title_label": self.layout_rect(objects_by_id, "title_label", pygame.Rect(36, 20, 240, 46)),
+            "subtitle_label": self.layout_rect(objects_by_id, "subtitle_label", pygame.Rect(40, 66, 260, 28)),
+            "attacker_label": self.layout_rect(objects_by_id, "attacker_label", pygame.Rect(720, 28, 560, 30)),
+            "meta_label": self.layout_rect(objects_by_id, "meta_label", pygame.Rect(720, 64, 560, 24)),
+            "party_meta_label": self.layout_rect(objects_by_id, "party_meta_label", pygame.Rect(720, 96, 620, 24)),
         }
 
     def _main_menu_preview_rects(self, objects_by_id: dict[str, LayoutObject]) -> dict[str, pygame.Rect]:
@@ -146,10 +151,29 @@ class PreviewViewportMapper:
     def __init__(self, canvas_size: tuple[int, int]) -> None:
         self.canvas_size = canvas_size
 
-    def viewport_for_panel(self, panel_rect: pygame.Rect) -> pygame.Rect:
+    def source_rect_for_screen(self, screen_id: str, preview_rects: dict[str, pygame.Rect]) -> pygame.Rect:
+        if screen_id == "game_table" or not preview_rects:
+            return pygame.Rect(0, 0, self.canvas_size[0], self.canvas_size[1])
+
+        visible_rects = [
+            rect
+            for object_id, rect in preview_rects.items()
+            if not (object_id == "overlay" and rect.size == self.canvas_size)
+        ]
+        if not visible_rects:
+            return pygame.Rect(0, 0, self.canvas_size[0], self.canvas_size[1])
+
+        source_rect = visible_rects[0].copy()
+        for rect in visible_rects[1:]:
+            source_rect.union_ip(rect)
+        source_rect.inflate_ip(96, 96)
+        return source_rect.clip(pygame.Rect(0, 0, self.canvas_size[0], self.canvas_size[1]))
+
+    def viewport_for_panel(self, panel_rect: pygame.Rect, source_rect: pygame.Rect | None = None) -> pygame.Rect:
         panel_rect = panel_rect.inflate(-24, -56)
         panel_rect.y += 22
-        ratio = self.canvas_size[0] / self.canvas_size[1]
+        source_rect = source_rect or pygame.Rect(0, 0, self.canvas_size[0], self.canvas_size[1])
+        ratio = source_rect.width / source_rect.height
         if panel_rect.width / panel_rect.height > ratio:
             height = panel_rect.height
             width = int(height * ratio)
@@ -163,22 +187,37 @@ class PreviewViewportMapper:
             height,
         )
 
-    def canvas_to_viewport_rect(self, rect: pygame.Rect, viewport: pygame.Rect) -> pygame.Rect:
-        scale_x = viewport.width / self.canvas_size[0]
-        scale_y = viewport.height / self.canvas_size[1]
+    def canvas_to_viewport_rect(
+        self,
+        rect: pygame.Rect,
+        viewport: pygame.Rect,
+        source_rect: pygame.Rect | None = None,
+    ) -> pygame.Rect:
+        source_rect = source_rect or pygame.Rect(0, 0, self.canvas_size[0], self.canvas_size[1])
+        scale_x = viewport.width / source_rect.width
+        scale_y = viewport.height / source_rect.height
         return pygame.Rect(
-            viewport.x + int(rect.x * scale_x),
-            viewport.y + int(rect.y * scale_y),
+            viewport.x + int((rect.x - source_rect.x) * scale_x),
+            viewport.y + int((rect.y - source_rect.y) * scale_y),
             max(1, int(rect.width * scale_x)),
             max(1, int(rect.height * scale_y)),
         )
 
-    def viewport_to_canvas_pos(self, pos: tuple[int, int], viewport: pygame.Rect) -> tuple[int, int] | None:
+    def viewport_to_canvas_pos(
+        self,
+        pos: tuple[int, int],
+        viewport: pygame.Rect,
+        source_rect: pygame.Rect | None = None,
+    ) -> tuple[int, int] | None:
         if not viewport.collidepoint(pos):
             return None
-        scale_x = self.canvas_size[0] / viewport.width
-        scale_y = self.canvas_size[1] / viewport.height
-        return int((pos[0] - viewport.x) * scale_x), int((pos[1] - viewport.y) * scale_y)
+        source_rect = source_rect or pygame.Rect(0, 0, self.canvas_size[0], self.canvas_size[1])
+        scale_x = source_rect.width / viewport.width
+        scale_y = source_rect.height / viewport.height
+        return (
+            source_rect.x + int((pos[0] - viewport.x) * scale_x),
+            source_rect.y + int((pos[1] - viewport.y) * scale_y),
+        )
 
 
 def object_at_canvas_pos(

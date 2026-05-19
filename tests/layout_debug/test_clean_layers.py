@@ -12,6 +12,7 @@ from tools.layout_debug.todo import TodoClipboardFormatter
 
 
 SCREEN_IDS = ("game_table", "main_menu", "modal_intro", "modal_endgame")
+LAYOUT_SCREEN_IDS = ("game_table", "game_ui", "main_menu", "modal_intro", "modal_endgame")
 
 
 class LayoutObjectTests(unittest.TestCase):
@@ -37,6 +38,8 @@ class LayoutObjectTests(unittest.TestCase):
         )
 
         self.assertEqual(layout_object.path, "game_table.player_left_panel")
+        self.assertEqual(layout_object.layout_screen_id, "game_table")
+        self.assertEqual(layout_object.layout_key, "game_table.player_left_panel")
         self.assertEqual(layout_object.object_type, "panel")
         self.assertEqual(layout_object.x, 12)
         self.assertEqual(layout_object.y, 0)
@@ -123,6 +126,33 @@ class LayoutDataSourceTests(unittest.TestCase):
         session.reset()
         self.assertEqual(data_source.layout["game_table"]["deck_panel"]["delta_x"], 0)
         self.assertEqual(data_source.objects_for_screen("game_table")[0].delta_x, 0)
+
+    def test_preview_game_table_includes_game_ui_objects_with_real_layout_key(self) -> None:
+        config_path = _write_config(
+            {
+                "layout": {
+                    "game_table": {
+                        "deck_panel": {"type": "card_zone"},
+                    },
+                    "game_ui": {
+                        "title_label": {"type": "label"},
+                    },
+                },
+            }
+        )
+
+        data_source = LayoutDataSource(config_path, LAYOUT_SCREEN_IDS)
+        data_source.load()
+
+        objects_by_id = {
+            layout_object.object_id: layout_object
+            for layout_object in data_source.objects_for_preview_screen("game_table")
+        }
+        self.assertEqual(objects_by_id["deck_panel"].screen_id, "game_table")
+        self.assertEqual(objects_by_id["deck_panel"].layout_screen_id, "game_table")
+        self.assertEqual(objects_by_id["title_label"].screen_id, "game_table")
+        self.assertEqual(objects_by_id["title_label"].layout_screen_id, "game_ui")
+        self.assertEqual(objects_by_id["title_label"].layout_key, "game_ui.title_label")
 
 
 class LayoutConfigRepositoryTests(unittest.TestCase):
